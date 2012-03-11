@@ -1,9 +1,10 @@
-#include "Connect.h"
+#include "connection.h"
+#include <string.h>
 
-//static char pstring[256];
+static char pstring[256];
 
 
-static Word LoginAndOpen(ConnectBuffer *buffer)
+static Word LoginAndOpen(Connection *buffer)
 {
   Word ipid;
   Word terr;
@@ -17,7 +18,7 @@ static Word LoginAndOpen(ConnectBuffer *buffer)
 
   if (_toolErr)
   {
-    buffer->state = ConnectStateError;
+    buffer->state = kConnectionStateError;
     return -1;
   }
 
@@ -25,33 +26,33 @@ static Word LoginAndOpen(ConnectBuffer *buffer)
   if (_toolErr || terr)
   {
     TCPIPLogout(ipid);
-    buffer->state = ConnectStateError;
+    buffer->state = kConnectionStateError;
     buffer->terr = terr;
     buffer->ipid = 0;
     return -1;
   }
 
   buffer->ipid = ipid;
-  buffer->state = ConnectStateConnecting;
+  buffer->state = kConnectionStateConnecting;
 
   return 0;
 }
 
 
-Word ConnectionPoll(ConnectBuffer *buffer)
+Word ConnectionPoll(Connection *buffer)
 {
   Word state;
   if (!buffer) return -1;
   state = buffer->state;
 
   if (state == 0) return -1;
-  if (state == ConnectStateConnected) return 1;
-  if (state == ConnectStateDisconnected) return 1;
-  if (state == ConnectStateError) return -1;
+  if (state == kConnectionStateConnected) return 1;
+  if (state == kConnectionStateDisconnected) return 1;
+  if (state == kConnectionStateError) return -1;
 
   TCPIPPoll();
 
-  if (state == ConnectStateDNR)
+  if (state == kConnectionStateDNR)
   {
     if (buffer->dnr.DNRstatus == DNR_OK)
     {
@@ -59,19 +60,19 @@ Word ConnectionPoll(ConnectBuffer *buffer)
     }
     else if (buffer->dnr.DNRstatus != DNR_Pending)
     {
-      buffer->state = ConnectStateError;
+      buffer->state = kConnectionStateError;
       return -1;
     }
   }
 
-  if (state == ConnectStateConnecting  || state == ConnectStateDisconnecting)
+  if (state == kConnectionStateConnecting  || state == kConnectionStateDisconnecting)
   {
     Word terr;
     static srBuff sr;
 
     terr = TCPIPStatusTCP(buffer->ipid, &sr);
 
-    if (state == ConnectStateDisconnecting)
+    if (state == kConnectionStateDisconnecting)
     {
       // these are not errors.
       if (terr == tcperrConClosing || terr == tcperrClosing)
@@ -85,14 +86,14 @@ Word ConnectionPoll(ConnectBuffer *buffer)
       TCPIPCloseTCP(buffer->ipid);
       TCPIPLogout(buffer->ipid);
       buffer->ipid = 0;
-      buffer->state = ConnectStateError;
+      buffer->state = kConnectionStateError;
       buffer->terr = terr;
       return -1;
     }
 
-    if (sr.srState == TCPSESTABLISHED) //  && state == ConnectStateConnecting)
+    if (sr.srState == TCPSESTABLISHED) //  && state == kConnectionStateConnecting)
     {
-      buffer->state = ConnectStateConnected;
+      buffer->state = kConnectionStateConnected;
       return 1;
     }
 
@@ -100,7 +101,7 @@ Word ConnectionPoll(ConnectBuffer *buffer)
     {
       TCPIPLogout(buffer->ipid);
       buffer->ipid = 0;
-      buffer->state = ConnectStateDisconnected;
+      buffer->state = kConnectionStateDisconnected;
       return 1;
     }
   }
@@ -108,12 +109,40 @@ Word ConnectionPoll(ConnectBuffer *buffer)
   return 0;
 }
 
-Word ConnectionOpen(ConnectBuffer *buffer, const char *host, Word port)
+Word ConnectionOpenC(Connection *buffer, const char *host, Word port)
+{
+  Word length;
+
+  if (!host) return -1;
+
+  length = strlen(host);
+  if (length > 255) return -1;
+
+  pstring[0] = length & 0xff;
+  memcpy(pstring + 1, host, length);
+
+  return ConnectionOpen(buffer, pstring, port);
+}
+
+Word ConnectionOpenGS(Connection *buffer, const GSString255 *host, Word port)
+{
+  if (!host) return -1;
+  if (host->length > 255) return -1;
+  
+  pstring[0] = host->length & 0xff;
+  memcpy(pstring + 1, host->text, host->length);
+  
+  return ConnectionOpen(buffer, pstring, port);
+}
+
+Word ConnectionOpen(Connection *buffer, const char *host, Word port)
 {
   buffer->state = 0;
   buffer->ipid = 0;
   buffer->terr = 0;
   buffer->port = port;
+
+  if (!buffer || !*buffer) return -1;
 
   // 1. check if we need to do DNR.
   if (TCPIPValidateIPString(host))
@@ -129,14 +158,14 @@ Word ConnectionOpen(ConnectBuffer *buffer, const char *host, Word port)
   TCPIPDNRNameToIP(host, &buffer->dnr);
   if (_toolErr)
   {
-    buffer->state = ConnectStateError;
+    buffer->state = kConnectionStateError;
     return -1;
   }
-  buffer->state = ConnectStateDNR;
+  buffer->state = kConnectionStateDNR;
   return 0;
 }
 
-void ConnectionInit(ConnectBuffer *buffer, Word memID)
+void ConnectionInit(Connection *buffer, Word memID)
 {
   buffer->memID = memID;
   buffer->ipid = 0;
@@ -147,19 +176,19 @@ void ConnectionInit(ConnectBuffer *buffer, Word memID)
   buffer->dnr.DNRIPaddress = 0;
 }
 
-Word ConnectionClose(ConnectBuffer *buffer)
+Word ConnectionClose(Connection *buffer)
 {
   Word state = buffer->state;
 
   // todo -- how do you close if not yet connected?
-  if (state == ConnectStateConnected)
+  if (state == kConnectionStateConnected)
   {
-    buffer->state = ConnectStateDisconnecting;
+    buffer->state = kConnectionStateDisconnecting;
     buffer->terr = TCPIPCloseTCP(buffer->ipid);
     return 0;
   }
 
-  if (state == ConnectStateDNR)
+  if (state == kConnectionStateDNR)
   {
     TCPIPCancelDNR(&buffer->dnr);
     buffer->state = 0;
