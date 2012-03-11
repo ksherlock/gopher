@@ -26,7 +26,7 @@ enum {
  * 
  */
 
-int URLGetComponentCString(const char *url, struct URLComponents *components, int type, char *dest)
+int URLComponentGetC(const char *url, URLComponents *components, int type, char *dest)
 {
     URLRange *rangePtr;
     URLRange r;
@@ -48,6 +48,35 @@ int URLGetComponentCString(const char *url, struct URLComponents *components, in
             memcpy(dest, url + r.location, r.length);
         }
         dest[r.length] = 0;
+        
+        return r.length;
+    }
+}
+
+// pstring.
+int URLComponentGet(const char *url, URLComponents *components, int type, char *dest)
+{
+    URLRange *rangePtr;
+    URLRange r;
+    
+    if (!url || !components) return -1;
+    
+    
+    if (type < URLComponentScheme || type > URLComponentPathAndQuery) return -1;
+    
+    rangePtr = &components->scheme;
+    
+    r = rangePtr[type];
+
+    if (!dest) return r.length;
+    else if (r.length > 255) return -1;
+    else
+    {
+        dest[0] = r.length;
+        if (r.length)
+        {
+            memcpy(dest + 1, url + r.location, r.length);
+        }
         
         return r.length;
     }
@@ -460,6 +489,8 @@ int ParseURL(const char *url, int length, struct URLComponents *components)
 
 }
 
+#ifdef TEST
+
 void test(const char *url)
 {
     URLComponents data;
@@ -475,19 +506,19 @@ void test(const char *url)
     printf("%s (%s)\n", url, ok ? "ok" : "error");
     
 
-    URLGetComponentCString(url, &data, URLComponentScheme, buffer);
+    URLComponentGetC(url, &data, URLComponentScheme, buffer);
     printf("      scheme: %s\n", buffer);
     
-    URLGetComponentCString(url, &data, URLComponentUser, buffer);    
+    URLComponentGetC(url, &data, URLComponentUser, buffer);    
     printf("    username: %s\n", buffer);
     
-    URLGetComponentCString(url, &data, URLComponentPassword, buffer);    
+    URLComponentGetC(url, &data, URLComponentPassword, buffer);    
     printf("    password: %s\n", buffer);
     
-    URLGetComponentCString(url, &data, URLComponentHost, buffer);        
+    URLComponentGetC(url, &data, URLComponentHost, buffer);        
     printf("        host: %s\n", buffer);
     
-    URLGetComponentCString(url, &data, URLComponentPort, buffer);    
+    URLComponentGetC(url, &data, URLComponentPort, buffer);    
     printf("        port: %s [%d]\n", buffer, data.portNumber);
     
     URLGetComponentCString(url, &data, URLComponentPath, buffer);    
@@ -496,10 +527,10 @@ void test(const char *url)
     URLGetComponentCString(url, &data, URLComponentParams, buffer);        
     printf("      params: %s\n", buffer);
     
-    URLGetComponentCString(url, &data, URLComponentQuery, buffer);        
+    URLComponentGetC(url, &data, URLComponentQuery, buffer);        
     printf("       query: %s\n", buffer);
     
-    URLGetComponentCString(url, &data, URLComponentFragment, buffer);        
+    URLComponentGetC(url, &data, URLComponentFragment, buffer);        
     printf("    fragment: %s\n", buffer);
         
     free(buffer);
@@ -517,3 +548,5 @@ int main(int argc, char **argv)
 
     return 0;
 } 
+
+#endif

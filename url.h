@@ -53,11 +53,11 @@ typedef struct URLComponents {
      
 } URLComponents;
 
-int ParseURL(const char *url, int length, struct URLComponents *components);
+int ParseURL(const char *url, int length, URLComponents *components);
 
-int URLGetComponentCString(const char *url, struct URLComponents *, int, char *);
-int URLGetComponentPString(const char *url, struct URLComponents *, int, char *);
-//int URLGetComponentGSString(const char *url, struct URLComponents *, int, GSString255Ptr);
+int URLComponentGet(const char *url, URLComponents *, int, char *);
+int URLComponentGetC(const char *url, URLComponents *, int, char *);
+//int URLComponentGetGS(const char *url, URLComponents *, int, GSString255Ptr);
 
 
 #endif
