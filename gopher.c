@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 /*
  * connect gopher.floodgap.com:70
@@ -125,6 +126,7 @@ int gopher_text(Word ipid, FILE *file)
   unsigned state = kStateEOL;
   int rv = 0;
 
+
   // I have bad luck with ReadLineTCP.
   while (state != kStateEOF)
   {
@@ -167,7 +169,7 @@ int gopher_text(Word ipid, FILE *file)
          if (state == kStateCR)
          {
            state = kStateEOL;
-           fputc('\n', file);
+           fputc('\r', file);
          }
          else if (state == kStateDotCR)
          {
@@ -186,11 +188,140 @@ int gopher_text(Word ipid, FILE *file)
     }
   }
   if (state != kStateEOF)
-    fprintf(stderr, "warning: eof not detected\n");
+    fprintf(stderr, "Warning: eof not found.\n");
 
   return rv;
 }
 
+int gopher_dir(Word ipid, FILE *file)
+{
+  Word eof = 0;
+  Word rv = 0;
+
+
+  for(;;)
+  {
+    Word count;
+    Handle h;
+
+#if 1
+    rlrBuff rb;
+
+    TCPIPPoll();
+
+    rv = TCPIPReadLineTCP(ipid,
+      "\p\r\n",
+      2,
+      NULL,
+      0xffff,
+      &rb);
+
+    count = rb.rlrBuffCount;
+    h = rb.rlrBuffHandle;
+#else
+    rrBuff rb;
+
+    TCPIPPoll();
+
+    rv = TCPIPReadTCP(ipid, 2, NULL, 0xffff, &rb);
+
+    count = rb.rrBuffCount;
+    h = rb.rrBuffHandle;
+#endif
+
+#if 0
+    if (rv || count || _toolErr) 
+    {
+      fprintf(stderr, "rv = %x, _toolErr = %u, count = %u\n", 
+        rv, _toolErr, count);
+    }
+#endif
+
+    if (rv && !count) break;
+
+    if (count)
+    {
+
+      Word tabs[4];
+      unsigned i,j;
+      char type;
+      char *buffer = *((char **)h);
+     
+      type = *buffer;
+      ++buffer;
+      --count;
+
+      if (type == '.' && count == 0)
+      {
+        eof = 1;
+        DisposeHandle(h);
+        break;
+      }
+      // format is [type][name] \t [path] \t [server] \t [port]
+      j = 1;
+      tabs[0] = 0;
+      tabs[1] = tabs[2] = tabs[3] = -1;
+
+      for (i = 0; i < count; ++i)
+      {
+        if (buffer[i] == '\t')
+        {
+          tabs[j++] = i;
+          buffer[i] = 0;
+          if (j == 4) break;
+        }
+      }
+      
+      // 'i' is info record.
+      if (type == 'i')
+      {
+        if (tabs[1] == -1)
+          fprintf(file, "%.*s\r", count, buffer);
+        else fprintf(file, "%s\r", buffer);
+      }
+      else if (j == 4) // all the tabs.
+      {
+        int port = 0;
+        // description
+        // file name
+        // server
+        // port
+        for (i = tabs[3] + 1; i < count; ++i)
+        {
+          char c = buffer[i];
+          if (c >= '0' && c <= '9') port = port * 10 + c - '0';
+        }
+        if (port == 70) 
+        {
+          fprintf(file, "%s <%s/%c%s>\r",
+            buffer, // description
+            buffer + 1 + tabs[2], // server
+            type, // type
+            buffer + 1 + tabs[1] // file name
+          );
+        }
+        else
+        {
+          fprintf(file, "%s <%s:%u/%c%s>\r",
+            buffer, // description
+            buffer + 1 + tabs[2], // server
+            port, // port
+            type, // type
+            buffer + 1 + tabs[1] // file name
+          );
+        }
+
+      }
+      
+      DisposeHandle(h);
+    }
+  }
+
+  if (!eof)
+    fprintf(stderr, "Warning: eof not found.\n");
+
+  return rv;
+}
 
 void do_url(const char *url)
 {
@@ -198,6 +329,7 @@ void do_url(const char *url)
   Connection buffer;
   char *host;
   char type;
+  FILE *file;
 
   if (!ParseURL(url, strlen(url), &components))
   {
@@ -246,7 +378,7 @@ void do_url(const char *url)
   {
     // / type
     // invalid -- treat as /
-    type = 1;
+    type = '1';
   }
   else
   {
@@ -263,12 +395,24 @@ void do_url(const char *url)
 
   // 5 and 9 are binary, 1 is dir, all others text.
 
-  if (type == 1 || type == 9)
-    gopher_binary(buffer.ipid, stdout);
-  else
-    gopher_text(buffer.ipid, stdout);
+  file = fdopen(STDOUT_FILENO, "wb");
 
-  fflush(stdout);
+  switch(type)
+  {
+  case '1':
+    gopher_dir(buffer.ipid, file);
+    break;
+  case '5':
+  case '9':
+    gopher_binary(buffer.ipid, file);
+    break;
+  default:
+    gopher_text(buffer.ipid, file);
+    break;
+  }
+
+  fflush(file);
+  fclose(file);
 
   ConnectionClose(&buffer);
 
@@ -280,7 +424,6 @@ void do_url(const char *url)
 
 int main(int argc, char **argv)
 {
-
   int i;
   Word flags;
 
