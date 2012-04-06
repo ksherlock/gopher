@@ -99,7 +99,7 @@ int gopher_binary(Word ipid, FILE *file)
     if (rv && !count) break;
 
     if (!count) continue;
-    fwrite(buffer, count, 1, file);
+    fwrite(buffer, 1, count, file);
 
   }
  
@@ -113,81 +113,65 @@ int gopher_text(Word ipid, FILE *file)
   // . \r\n
   // any leading '.' must be doubled.
 
-  enum {
-    kStateText = 0,
-    kStateCR,
-    kStateEOL,
-    kStateDot,
-    kStateDotCR,
-    kStateEOF
-  };
+  Word eof = 0;
+  Word rv = 0;
 
-  static char buffer[256];
-  unsigned state = kStateEOL;
-  int rv = 0;
-
-
-  // I have bad luck with ReadLineTCP.
-  while (state != kStateEOF)
-  {
-    static char buffer[512];
-    rrBuff rb;
+  for(;;)
+  { 
     Word count;
-    Word i;
+    Handle h;
+
+    rlrBuff rb;
 
     TCPIPPoll();
-    rv = TCPIPReadTCP(ipid,  0, (Ref)buffer, 512, &rb);
-
-    count = rb.rrBuffCount;
-    if (rv == 0 && count == 0) continue;
-
-    //fprintf(stderr, "rv = %x, count = %u\n", rv, rb.rrBuffCount); 
-
-    //if (rv == tcperrConClosing) rv = 0;
-    if (rv && !count) break;
-    if (!count) continue;
-
-    // scan the buffer for a line.
-    for (i = 0; i < count; ++i)
-    {
-      char c = buffer[i];
     
-      if (c == '.')
-      {
-        if (state == kStateEOL) state = kStateDot;
-        else fputc(c, file); 
-        continue;
-      }
-      if (c == '\r')
-      {
-        if (state == kStateDot) state = kStateDotCR;
-        else state = kStateCR;
-        continue;
-      }
-      if (c == '\n')
-      {
-         if (state == kStateCR)
-         {
-           state = kStateEOL;
-           fputc('\r', file);
-         }
-         else if (state == kStateDotCR)
-         {
-           state = kStateEOF;
-           break;
-         }
-         // otherwise, silently drop?
-         continue;
-      }
+    rv = TCPIPReadLineTCP(ipid, 
+      "\p\r\n",
+      2,
+      NULL,
+      0xffff,
+      &rb);
 
-      {
-         state = kStateText; // reset if kStateDot.
-         // . and \r will be silently dropped
-         fputc(c, file);
-       }
+    count = rb.rlrBuffCount;
+    h = rb.rlrBuffHandle;
+
+    if (rv && !count) 
+    {
+      DisposeHandle(h);
+      break;
     }
+
+    HLock(h);
+
+    if (count)
+    {
+      char *cp;
+
+      cp = *((char **)h);
+
+      // .. -> . 
+      // . \r\n -> eof
+
+      if (*cp == '.')
+      {
+        if (count == 1)
+        {
+          DisposeHandle(h);
+          eof = 1;
+          break;
+        }
+
+        cp++;
+        count--;
+      }
+      fwrite(cp, 1, count, file);
+      fputc('\r', file);
+    }
+
+    DisposeHandle(h);
   }
-  if (state != kStateEOF)
+
+  if (!eof)
     fprintf(stderr, "Warning: eof not found.\n");
 
   return rv;
@@ -204,7 +188,6 @@ int gopher_dir(Word ipid, FILE *file)
     Word count;
     Handle h;
 
-#if 1
     rlrBuff rb;
 
     TCPIPPoll();
@@ -218,16 +201,6 @@ int gopher_dir(Word ipid, FILE *file)
 
     count = rb.rlrBuffCount;
     h = rb.rlrBuffHandle;
-#else
-    rrBuff rb;
-
-    TCPIPPoll();
-
-    rv = TCPIPReadTCP(ipid, 2, NULL, 0xffff, &rb);
-
-    count = rb.rrBuffCount;
-    h = rb.rrBuffHandle;
-#endif
 
 #if 0
     if (rv || count || _toolErr) 
@@ -237,8 +210,13 @@ int gopher_dir(Word ipid, FILE *file)
     }
 #endif
 
-    if (rv && !count) break;
+    if (rv && !count) 
+    {
+      DisposeHandle(h);
+      break;
+    }
 
+    HLock(h);
     if (count)
     {
 
@@ -276,8 +254,11 @@ int gopher_dir(Word ipid, FILE *file)
       if (type == 'i')
       {
         if (tabs[1] == -1)
-          fprintf(file, "%.*s\r", count, buffer);
-        else fprintf(file, "%s\r", buffer);
+          fwrite(buffer, 1, count, file);
+        else 
+          fputs(buffer, file);
+
+        fputc('\r', file);
       }
       else if (j == 4) // all the tabs.
       {
