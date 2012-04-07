@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
@@ -83,68 +82,159 @@ int URLComponentGet(const char *url, URLComponents *components, int type, char *
 }
 
 
-#if 0
-int schemeType(const char *string)
+static void parseScheme(const char *cp, unsigned size, URLComponents *c)
 {
-  if (!string || !*string) return SCHEME_NONE;
- 
-  static struct {
-    int length;
-    const char *data
-  } table[] = {
-    { 4, "file:" },
-    { 3, "ftp:" },
-    { 6, "gopher:" },
-    { 4, "http:" },
-    { 5, "https:" },
-    { 6, "mailto:" },
-    { 4, "news:" },
-    { 4, "nntp:" },
-    { 6, "telnet:" }
-  };
+  unsigned *wp;
+  unsigned h;
   
-  switch(*string)
+  if (!c) return;
+  if (!cp || !size)
   {
-  case 'f':
-    // ftp, file
-    if (!strcmp(string, "file")) return SCHEME_FILE;
-    if (!strcmp(string, "ftp")) return SCHEME_FTP;    
-    break;
-    
-  case 'g':
-    // gopher
-    if (!strcmp(string, "gopher")) return SCHEME_GOPHER;
-    break;
-    
-  case 'h':
-    // http, https
-    if (!strcmp(string, "https")) return SCHEME_HTTPS;
-    if (!strcmp(string, "http")) return SCHEME_HTTP;    
-    break;
-    
-  case 'm':
-    // mailto
-    if (!strcmp(string, "mailto")) return SCHEME_MAILTO;
-    break;
-    
-  case 'n':
-   // news, nntp
-    if (!strcmp(string, "news")) return SCHEME_NEWS;
-    if (!strcmp(string, "nntp")) return SCHEME_NNTP;
-   break;
-   
-  case 't':
-    // telnet
-    if (!strcmp(string, "telnet")) return SCHEME_TELNET;
-    break;
-  
+    c->portNumber = 0;
+    c->schemeType = SCHEME_NONE;
+    return;
   }
+  
+  wp = (unsigned *)cp;
+  h = (*cp ^ size) & 0x0f;
+  
+  switch(h)
+  {
+  // --- begin auto-generated --
+  case 0:
+    // ssh
+    if (size == 3
+      && (wp[0] | 0x2020) == 'ss'
+      && (cp[2] | 0x20) == 'h'
+    )
+    {
+      c->schemeType = SCHEME_SSH;
+      c->portNumber = 22;
+      return;
+    }
+    break;
+  case 1:
+    // gopher
+    if (size == 6
+      && (wp[0] | 0x2020) == 'og'
+      && (wp[1] | 0x2020) == 'hp'
+      && (wp[2] | 0x2020) == 're'
+    )
+    {
+      c->schemeType = SCHEME_GOPHER;
+      c->portNumber = 70;
+      return;
+    }
+    break;
+  case 2:
+    // file, telnet, afp
+    if (size == 4
+      && (wp[0] | 0x2020) == 'if'
+      && (wp[1] | 0x2020) == 'el'
+    )
+    {
+      c->schemeType = SCHEME_FILE;
+      c->portNumber = 0;
+      return;
+    }
+    if (size == 6
+      && (wp[0] | 0x2020) == 'et'
+      && (wp[1] | 0x2020) == 'nl'
+      && (wp[2] | 0x2020) == 'te'
+    )
+    {
+      c->schemeType = SCHEME_TELNET;
+      c->portNumber = 23;
+      return;
+    }
+    if (size == 3
+      && (wp[0] | 0x2020) == 'fa'
+      && (cp[2] | 0x20) == 'p'
+    )
+    {
+      c->schemeType = SCHEME_AFP;
+      c->portNumber = 548;
+      return;
+    }
+    break;
+  case 5:
+    // ftp
+    if (size == 3
+      && (wp[0] | 0x2020) == 'tf'
+      && (cp[2] | 0x20) == 'p'
+    )
+    {
+      c->schemeType = SCHEME_FTP;
+      c->portNumber = 21;
+      return;
+    }
+    break;
+  case 7:
+    // sftp
+    if (size == 4
+      && (wp[0] | 0x2020) == 'fs'
+      && (wp[1] | 0x2020) == 'pt'
+    )
+    {
+      c->schemeType = SCHEME_SFTP;
+      c->portNumber = 115;
+      return;
+    }
+    break;
+  case 10:
+    // nntp
+    if (size == 4
+      && (wp[0] | 0x2020) == 'nn'
+      && (wp[1] | 0x2020) == 'pt'
+    )
+    {
+      c->schemeType = SCHEME_NNTP;
+      c->portNumber = 119;
+      return;
+    }
+    break;
+  case 12:
+    // http
+    if (size == 4
+      && (wp[0] | 0x2020) == 'th'
+      && (wp[1] | 0x2020) == 'pt'
+    )
+    {
+      c->schemeType = SCHEME_HTTP;
+      c->portNumber = 80;
+      return;
+    }
+    break;
+  case 13:
+    // https, nfs
+    if (size == 5
+      && (wp[0] | 0x2020) == 'th'
+      && (wp[1] | 0x2020) == 'pt'
+      && (cp[4] | 0x20) == 's'
+    )
+    {
+      c->schemeType = SCHEME_HTTPS;
+      c->portNumber = 443;
+      return;
+    }
+    if (size == 3
+      && (wp[0] | 0x2020) == 'fn'
+      && (cp[2] | 0x20) == 's'
+    )
+    {
+      c->schemeType = SCHEME_NFS;
+      c->portNumber = 2049;
+      return;
+    }
+    break;
 
-  return SCHEME_UNKNOWN;
-
+  // --- end auto-generated --
+  }
+  
+  c->portNumber = 0;
+  c->schemeType = SCHEME_UNKNOWN; 
 }
 
-#endif
 
 int ParseURL(const char *url, int length, struct URLComponents *components)
 {
@@ -202,7 +292,10 @@ int ParseURL(const char *url, int length, struct URLComponents *components)
         range.length = i;
 
         components->scheme = range;
-        ++i; // skip the ':'
+        
+        parseScheme(url, i, components);
+        
+        ++i; // skip the ':'        
     }
     else
     {
@@ -489,64 +582,3 @@ int ParseURL(const char *url, int length, struct URLComponents *components)
 
 }
 
-#ifdef TEST
-
-void test(const char *url)
-{
-    URLComponents data;
-    int ok;
-    
-    char *buffer;
-    buffer = strdup(url); // enough space.
-    
-    if (!url || !*url) return;
-    
-    ok = ParseURL(url, strlen(url), &data);
-    
-    printf("%s (%s)\n", url, ok ? "ok" : "error");
-    
-
-    URLComponentGetC(url, &data, URLComponentScheme, buffer);
-    printf("      scheme: %s\n", buffer);
-    
-    URLComponentGetC(url, &data, URLComponentUser, buffer);    
-    printf("    username: %s\n", buffer);
-    
-    URLComponentGetC(url, &data, URLComponentPassword, buffer);    
-    printf("    password: %s\n", buffer);
-    
-    URLComponentGetC(url, &data, URLComponentHost, buffer);        
-    printf("        host: %s\n", buffer);
-    
-    URLComponentGetC(url, &data, URLComponentPort, buffer);    
-    printf("        port: %s [%d]\n", buffer, data.portNumber);
-    
-    URLGetComponentCString(url, &data, URLComponentPath, buffer);    
-    printf("        path: %s\n", buffer);
-    
-    URLGetComponentCString(url, &data, URLComponentParams, buffer);        
-    printf("      params: %s\n", buffer);
-    
-    URLComponentGetC(url, &data, URLComponentQuery, buffer);        
-    printf("       query: %s\n", buffer);
-    
-    URLComponentGetC(url, &data, URLComponentFragment, buffer);        
-    printf("    fragment: %s\n", buffer);
-        
-    free(buffer);
-        
-}
-
-int main(int argc, char **argv)
-{
-    int i;
-    
-    for (i = 1; i < argc; ++i)
-    {
-        test(argv[i]);
-    }
-
-    return 0;
-} 
-
-#endif

@@ -1,18 +1,22 @@
 #ifndef __url_h__
+
 #define __url_h__
 
 enum {
     SCHEME_UNKNOWN = -1,
     SCHEME_NONE = 0,
-    SCHEME_FILE,
-    SCHEME_FTP,
-    SCHEME_GOPHER,
-    SCHEME_HTTP,
-    SCHEME_HTTPS,
-    SCHEME_MAILTO,
-    SCHEME_NEWS,
-    SCHEME_NNTP,
-    SCHEME_TELNET
+    SCHEME_FILE = 0xfffe,
+    SCHEME_FTP = 21,
+    SCHEME_GOPHER = 70,
+    SCHEME_HTTP = 80,
+    SCHEME_HTTPS = 443,
+    SCHEME_NNTP = 119,
+    SCHEME_TELNET = 23,
+    SCHEME_SSH = 22,
+    SCHEME_SFTP = 115,
+    SCHEME_AFP = 548,
+    SCHEME_NFS = 2049
+
 };
 
 
