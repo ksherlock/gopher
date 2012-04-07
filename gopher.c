@@ -132,8 +132,11 @@ int gopher_text(Word ipid, FILE *file)
       0xffff,
       &rb);
 
-    count = rb.rlrBuffCount;
+    //count = rb.rlrBuffCount;
+    // bug -- count is sometimes wildly wrong....
+
     h = rb.rlrBuffHandle;
+    count = h ? (Word)GetHandleSize(h) : 0;
 
     if (rv && !count) 
     {
@@ -141,14 +144,19 @@ int gopher_text(Word ipid, FILE *file)
       break;
     }
 
-    HLock(h);
+    if (count == 0 && rb.rlrIsDataFlag)
+    {
+      fputc('\r', file);
+    }
 
     if (count)
     {
       char *cp;
 
+      HLock(h);
       cp = *((char **)h);
 
+      //fprintf(stderr, "%d  %d\n", count, (int)GetHandleSize(h));
       // .. -> . 
       // . \r\n -> eof
 
@@ -199,8 +207,9 @@ int gopher_dir(Word ipid, FILE *file)
       0xffff,
       &rb);
 
-    count = rb.rlrBuffCount;
+    //count = rb.rlrBuffCount;
     h = rb.rlrBuffHandle;
+    count = h ? (Word)GetHandleSize(h) : 0;
 
 #if 0
     if (rv || count || _toolErr) 
@@ -216,14 +225,16 @@ int gopher_dir(Word ipid, FILE *file)
       break;
     }
 
-    HLock(h);
     if (count)
     {
 
       Word tabs[4];
       unsigned i,j;
       char type;
-      char *buffer = *((char **)h);
+      char *buffer;
+
+      HLock(h);
+      buffer = *((char **)h);
      
       type = *buffer;
       ++buffer;
@@ -274,21 +285,21 @@ int gopher_dir(Word ipid, FILE *file)
         }
         if (port == 70) 
         {
-          fprintf(file, "%s <%s/%c%s>\r",
-            buffer, // description
+          fprintf(file, "[%s/%c%s]  %s\r",
             buffer + 1 + tabs[2], // server
             type, // type
-            buffer + 1 + tabs[1] // file name
+            buffer + 1 + tabs[1], // file name
+            buffer // description
           );
         }
         else
         {
-          fprintf(file, "%s <%s:%u/%c%s>\r",
-            buffer, // description
+          fprintf(file, "[%s:%u/%c%s]  %s\r",
             buffer + 1 + tabs[2], // server
             port, // port
             type, // type
-            buffer + 1 + tabs[1] // file name
+            buffer + 1 + tabs[1], // file name
+            buffer // description
           );
         }
 
