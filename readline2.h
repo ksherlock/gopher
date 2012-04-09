@@ -12,9 +12,10 @@ enum {
 };
 
 typedef struct rlBuffer {
-    Handle handle;
-    LongWord size;
+    Handle bufferHandle;
+    LongWord bufferSize;
     Word terminator;
+    Word moreFlag;
 } rlBuffer; 
 
 Word ReadLine2(Word ipid, rlBuffer *buffer);
