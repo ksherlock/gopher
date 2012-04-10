@@ -164,6 +164,7 @@ loop do
         end
         
         client.close()
+        puts("connection closed")
     end
 end
     

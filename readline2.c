@@ -1,6 +1,6 @@
 #include "readline2.h"
 #include <tcpipx.h>
-
+#include <Memory.h>
 
 static LongWord find_crlf(const char *cp, LongWord length)
 {
@@ -87,7 +87,7 @@ Word ReadLine2(Word ipid, rlBuffer *buffer)
     
     if (!buffer) return 0; // ?
     
-    buffer->bufferhandle = NULL;
+    buffer->bufferHandle = NULL;
     buffer->bufferSize = 0;
     buffer->terminator = 0;
     buffer->moreFlag = 0;
@@ -103,7 +103,7 @@ Word ReadLine2(Word ipid, rlBuffer *buffer)
     if (state == TCPSCLOSED) return tcperrBadConnection;
     if (state < TCPSESTABLISHED) return tcperrNoResources;
 
-    h = (Handle *)ur->uwTCPDataIn;
+    h = (Handle)ur->uwTCPDataIn;
     // should never happen....
     if (!h) return tcperrNoResources;
     cp = *(char **)h;
@@ -174,7 +174,7 @@ Word ReadLine2(Word ipid, rlBuffer *buffer)
 
     buffer->bufferSize = size;
     buffer->bufferHandle = h;
-    buffer->term = term;
+    buffer->terminator = term;
 
     cp = *(char **)h;
     
@@ -183,7 +183,7 @@ Word ReadLine2(Word ipid, rlBuffer *buffer)
         Word rv;
         rrBuff rb;
 
-        rv = TCPIPReadTCP(ipid, 0, cp, hsize, &rb);
+        rv = TCPIPReadTCP(ipid, 0, (Ref)cp, hsize, &rb);
         // tcperrConClosing is the only possible error 
         // (others were handled above via the state). 
         
