@@ -1,5 +1,4 @@
 #ifndef __url_h__
-
 #define __url_h__
 
 enum {
@@ -18,7 +17,6 @@ enum {
     SCHEME_NFS = 2049
 
 };
-
 
 typedef struct URLRange {
     int location;
