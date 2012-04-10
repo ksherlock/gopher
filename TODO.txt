@@ -1,6 +1,3 @@
-* Marinetti ReadLine bug?
-TCPIPReadLineTCP rlrBuff.count is sometimes wildly inaccurate.
-(using GetHandleSize as a workaround)
 
 * "-o file" to output to a named file.  
 
@@ -9,4 +6,12 @@ TCPIPReadLineTCP rlrBuff.count is sometimes wildly inaccurate.
 * set filetype/auxtype based on extension? (mostly for .c/.h files)
 
 * timeout for URL connection.
+
+----
+fixed
+
+* Marinetti ReadLine bug?
+- TCPIPReadLineTCP rlrBuff.count is sometimes wildly inaccurate.
+- bug identified.  Using ReadLine2 as a workaround (plus it's easier)
+
 
