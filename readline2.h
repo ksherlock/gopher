@@ -18,6 +18,6 @@ typedef struct rlBuffer {
     Word moreFlag;
 } rlBuffer; 
 
-Word ReadLine2(Word ipid, rlBuffer *buffer);
+int ReadLine2(Word ipid, rlBuffer *buffer);
 
 #endif

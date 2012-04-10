@@ -1,6 +1,7 @@
 #include "readline2.h"
 #include <tcpipx.h>
-#include <Memory.h>
+#include <memory.h>
+#include <stdio.h>
 
 static LongWord find_crlf(const char *cp, LongWord length)
 {
@@ -69,9 +70,13 @@ static LongWord find_crlf(const char *cp, LongWord length)
 /*
  * read a line terminated by \r\n, \r, or \n
  *
- *
+ * Returns: 
+ * -1: eof (but may still have data)
+ *  0: no data read
+ *  1: data read (but may be an empty string)
  */
-Word ReadLine2(Word ipid, rlBuffer *buffer)
+
+int ReadLine2(Word ipid, rlBuffer *buffer)
 {
     userRecordHandle urh;
     userRecordPtr ur;
@@ -85,7 +90,7 @@ Word ReadLine2(Word ipid, rlBuffer *buffer)
     Word state;
     
     
-    if (!buffer) return 0; // ?
+    if (!buffer) return -1; // ?
     
     buffer->bufferHandle = NULL;
     buffer->bufferSize = 0;
@@ -93,37 +98,38 @@ Word ReadLine2(Word ipid, rlBuffer *buffer)
     buffer->moreFlag = 0;
 
     urh = TCPIPGetUserRecord(ipid);
-    if (_toolErr || !urh) return 0;
+    if (_toolErr || !urh) return -1;
     
     ur = *urh;
     
 
     state = ur->uwTCP_State;
-    // TCPREAD returns these errors.
-    if (state == TCPSCLOSED) return tcperrBadConnection;
-    if (state < TCPSESTABLISHED) return tcperrNoResources;
+    // TCPREAD returns a resource error for these.
+    if (state == TCPSCLOSED) return -1;
+    if (state < TCPSESTABLISHED) return 0;
 
     h = (Handle)ur->uwTCPDataIn;
     // should never happen....
-    if (!h) return tcperrNoResources;
+    if (!h) return -1;
     cp = *(char **)h;
     
     hsize = GetHandleSize(h);
     
     if (!hsize)
     {
-        if (state > TCPSCLOSEWAIT) return tcperrConClosing;
+        if (state >= TCPSCLOSEWAIT) return -1;
         return 0;
     }
     
     size = find_crlf(cp, hsize);
-    
+
     // -1 = not found.
     if (size == 0xffffffff)
     {
         
         // if state >= CLOSEWAIT, assume no more data incoming
         // and return as-is w/o terminator.
+
         // if state < TCPSCLOSEWAIT, the terminator has not yet been
         // received, so don't return anything.
         
@@ -158,12 +164,13 @@ Word ReadLine2(Word ipid, rlBuffer *buffer)
     
     // read the data.
     // read will stop reading if there was a push.
-    // if using \r\n, there could be something stupid like a push in the middle,
-    // so read it in and then shrink it afterwards.
+    // if using \r\n, there could be something stupid like a push 
+    // in the middle, so read it in and then shrink it afterwards.
     //
     
-    // 99% of the time, it should just be one read, but generating the handle now
-    // and reading into a pointer keeps it simpler for the case where that is not the case.
+    // 99% of the time, it should just be one read, but generating 
+    // the handle now and reading into a pointer keeps it simpler 
+    // for the case where that is not the case.
     
     // size = data to return
     // hsize = data to read.
@@ -183,10 +190,25 @@ Word ReadLine2(Word ipid, rlBuffer *buffer)
         Word rv;
         rrBuff rb;
 
+       
         rv = TCPIPReadTCP(ipid, 0, (Ref)cp, hsize, &rb);
         // tcperrConClosing is the only possible error 
         // (others were handled above via the state). 
-        
+    
+        if (rb.rrBuffCount > hsize)
+        {
+            
+          asm {
+            brk 0xea
+            lda <h
+            ldx <h+2
+            lda <cp
+            ldx <cp+2
+            lda <hsize
+            ldx <hsize+2
+          }
+        }    
+
         hsize -= rb.rrBuffCount;
         cp += rb.rrBuffCount;
         
@@ -210,7 +232,15 @@ Word ReadLine2(Word ipid, rlBuffer *buffer)
             SetHandleSize(size, h);
         }
     }
-    
-    // will be conclosing or 0.
-    return ur->uwTCP_ErrCode;
+
+
+   // if closing and no more data, return -1
+   // else return 1.
+
+   // eh, let them make another call.
+   //if (state > TCPSCLOSEWAIT && rb->moreFlag == 0)
+   //  return -1;
+     
+   return 1;
 }
+
