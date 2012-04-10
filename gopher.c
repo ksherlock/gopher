@@ -3,14 +3,17 @@
 
 #include <tcpip.h>
 
-
 #include "url.h"
 #include "connection.h"
+#include "readline2.h"
 
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+
+#ifndef ORCA_BUILD
 #include <unistd.h>
+#endif
 
 /*
  * connect gopher.floodgap.com:70
@@ -108,45 +111,48 @@ int gopher_binary(Word ipid, FILE *file)
 
 int gopher_text(Word ipid, FILE *file)
 {
+  Word lines[2] = {0, 0};
   // text \r\n
   // ...
   // . \r\n
   // any leading '.' must be doubled.
 
   Word eof = 0;
-  Word rv = 0;
+  int rv = 0;
+
+  TCPIPPoll();
 
   for(;;)
   { 
     Word count;
     Handle h;
 
-    rlrBuff rb;
+    rlBuffer rb;
 
-    TCPIPPoll();
-    
-    rv = TCPIPReadLineTCP(ipid, 
-      "\p\r\n",
-      2,
-      NULL,
-      0xffff,
-      &rb);
+    rv = ReadLine2(ipid, &rb);
 
-    //count = rb.rlrBuffCount;
-    // bug -- count is sometimes wildly wrong....
+    h = rb.bufferHandle;
+    count = rb.bufferSize;
 
-    h = rb.rlrBuffHandle;
-    count = h ? (Word)GetHandleSize(h) : 0;
-
-    if (rv && !count) 
+    if (rv < 0) break; // eof
+    if (rv == 0)  // no data available (yet)
     {
-      DisposeHandle(h);
-      break;
+      TCPIPPoll();
+      continue;
     }
 
-    if (count == 0 && rb.rlrIsDataFlag)
+    if (!rb.moreFlag) TCPIPPoll();
+
+
+    if (count == 0)
     {
-      fputc('\r', file);
+      DisposeHandle(h);
+      if (rb.terminator)
+      {
+        fputc('\r', file);
+      }
+
+      continue;
     }
 
     if (count)
@@ -156,7 +162,6 @@ int gopher_text(Word ipid, FILE *file)
       HLock(h);
       cp = *((char **)h);
 
-      //fprintf(stderr, "%d  %d\n", count, (int)GetHandleSize(h));
       // .. -> . 
       // . \r\n -> eof
 
@@ -172,6 +177,7 @@ int gopher_text(Word ipid, FILE *file)
         cp++;
         count--;
       }
+
       fwrite(cp, 1, count, file);
       fputc('\r', file);
     }
@@ -182,47 +188,41 @@ int gopher_text(Word ipid, FILE *file)
   if (!eof)
     fprintf(stderr, "Warning: eof not found.\n");
 
-  return rv;
+  return eof ? 0 : -1;
 }
 
 int gopher_dir(Word ipid, FILE *file)
 {
   Word eof = 0;
-  Word rv = 0;
+  int rv = 0;
 
+  TCPIPPoll();
 
   for(;;)
   {
+    rlBuffer rb;
     Word count;
     Handle h;
 
-    rlrBuff rb;
 
-    TCPIPPoll();
+    rv = ReadLine2(ipid, &rb);
 
-    rv = TCPIPReadLineTCP(ipid,
-      "\p\r\n",
-      2,
-      NULL,
-      0xffff,
-      &rb);
+    h = rb.bufferHandle;
+    count = rb.bufferSize;
 
-    //count = rb.rlrBuffCount;
-    h = rb.rlrBuffHandle;
-    count = h ? (Word)GetHandleSize(h) : 0;
-
-#if 0
-    if (rv || count || _toolErr) 
+    if (rv < 0) break;
+    if (rv == 0)
     {
-      fprintf(stderr, "rv = %x, _toolErr = %u, count = %u\n", 
-        rv, _toolErr, count);
+      TCPIPPoll();
+      continue;
     }
-#endif
+    if (!rb.moreFlag) TCPIPPoll();
+ 
 
-    if (rv && !count) 
+    if (!count) 
     {
-      DisposeHandle(h);
-      break;
+      // blank line?
+      continue; 
     }
 
     if (count)
@@ -246,6 +246,7 @@ int gopher_dir(Word ipid, FILE *file)
         DisposeHandle(h);
         break;
       }
+
       // format is [type][name] \t [path] \t [server] \t [port]
       j = 1;
       tabs[0] = 0;
@@ -283,6 +284,7 @@ int gopher_dir(Word ipid, FILE *file)
           char c = buffer[i];
           if (c >= '0' && c <= '9') port = port * 10 + c - '0';
         }
+
         if (port == 70) 
         {
           fprintf(file, "[%s/%c%s]  %s\r",
@@ -312,7 +314,7 @@ int gopher_dir(Word ipid, FILE *file)
   if (!eof)
     fprintf(stderr, "Warning: eof not found.\n");
 
-  return rv;
+  return eof ? 0 : -1;
 }
 
 void do_url(const char *url)
@@ -387,7 +389,11 @@ void do_url(const char *url)
 
   // 5 and 9 are binary, 1 is dir, all others text.
 
+#ifdef ORCA_BUILD
+  file = stdout; 
+#else
   file = fdopen(STDOUT_FILENO, "wb");
+#endif
 
   switch(type)
   {
