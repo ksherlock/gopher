@@ -1,3 +1,5 @@
+#pragma optimize 79
+
 #include "readline2.h"
 #include <tcpipx.h>
 #include <memory.h>

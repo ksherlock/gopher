@@ -1,6 +1,8 @@
+#pragma optimize 79
+
 #include <Locator.h>
 #include <Memory.h>
-
+#include <MiscTool.h>
 #include <tcpip.h>
 
 #include "url.h"

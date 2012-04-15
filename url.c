@@ -1,3 +1,5 @@
+#pragma optimize 79
+
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
