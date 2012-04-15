@@ -1,5 +1,10 @@
 #!/usr/bin/env ruby -w
 
+#
+# gopher-server [-p port] [root directory]
+#
+#
+
 require 'socket'
 require 'optparse'
 
@@ -125,7 +130,7 @@ port = 7070
 
 OptionParser.new { |opts|
 
-    opts.banner = "Usage: gopher-server [-p port]"
+    opts.banner = "Usage: gopher-server [-p port] [root-directory]"
     
     opts.on('-p P', '--port P', Integer, 'Port') do |x|
         port = x
@@ -141,7 +146,10 @@ OptionParser.new { |opts|
 }.parse!
 
 
+Dir.chdir(ARGV.pop()) if ARGV.length == 1
+
 server = TCPServer.new("0.0.0.0", port)
+puts("Listening on port #{port}")
 loop do
     Thread.start(server.accept) do |client|
         begin
@@ -152,7 +160,7 @@ loop do
             Thread.current[:hostname] = hostname
             Thread.current[:port] = port
             
-            puts("accept from #{addr.join(' ')}")
+            puts("accept from #{peer}")
             
             do_request(client)
             client.flush()
