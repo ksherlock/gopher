@@ -1,3 +1,5 @@
+#pragma optimize 79
+
 #include "connection.h"
 #include <string.h>
 
@@ -8,7 +10,6 @@ static Word LoginAndOpen(Connection *buffer)
 {
   Word ipid;
   Word terr;
-
 
   ipid = TCPIPLogin(
     buffer->memID, 
