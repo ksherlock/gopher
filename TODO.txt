@@ -1,14 +1,16 @@
 
-* "-o file" to output to a named file.  
 
-* "-O" to output to file based on url
 
 * set filetype/auxtype based on extension? (mostly for .c/.h files)
 
-* timeout for URL connection.
 
 ----
 fixed
+
+* "-o file" to output to a named file.  
+* "-O" to output to file based on url
+* timeout for URL connection.
+
 
 * Marinetti ReadLine bug?
 - TCPIPReadLineTCP rlrBuff.count is sometimes wildly inaccurate.
