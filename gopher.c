@@ -12,10 +12,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <errno.h>
 
-#ifndef ORCA_BUILD
 #include <unistd.h>
-#endif
 
 /*
  * connect gopher.floodgap.com:70
@@ -37,15 +36,28 @@ Word StartUp(displayPtr fx)
   word status;
   word flags = 0;
   
+  // TCPIP is an init, not a tool, so it should always
+  // be loaded.
+  
   status = TCPIPStatus();
   if (_toolErr)
   {
-    LoadOneTool(54, 0x0201);
+    LoadOneTool(54, 0x0300);
     if (_toolErr) return -1;
 
     status = 0;
     flags |= kLoaded;
   }
+
+#if 0
+  // require 3.0b3
+  if (TCPIPLongVersion() < 0x03006003)
+  {
+    if (flags & kLoaded)
+      UnloadOneTool(54);
+    return -1;      
+  }
+#endif
 
   if (!status)
   {
@@ -113,7 +125,6 @@ int gopher_binary(Word ipid, FILE *file)
 
 int gopher_text(Word ipid, FILE *file)
 {
-  Word lines[2] = {0, 0};
   // text \r\n
   // ...
   // . \r\n
@@ -121,6 +132,7 @@ int gopher_text(Word ipid, FILE *file)
 
   Word eof = 0;
   int rv = 0;
+  Word lastTerm = 0;
 
   TCPIPPoll();
 
@@ -145,15 +157,20 @@ int gopher_text(Word ipid, FILE *file)
 
     if (!rb.moreFlag) TCPIPPoll();
 
-
     if (count == 0)
     {
       DisposeHandle(h);
       if (rb.terminator)
       {
-        fputc('\r', file);
+        if (lastTerm == '\r' && rb.terminator == '\n')
+        {
+            /* nothing */
+        }
+        else 
+            fputc('\r', file);
       }
 
+      lastTerm = rb.terminator;
       continue;
     }
 
@@ -200,6 +217,9 @@ int gopher_dir(Word ipid, FILE *file)
 
   TCPIPPoll();
 
+
+  // blank lines are ignored, so no need to check for terminator split.
+  
   for(;;)
   {
     rlBuffer rb;
@@ -319,43 +339,41 @@ int gopher_dir(Word ipid, FILE *file)
   return eof ? 0 : -1;
 }
 
-void do_url(const char *url)
+void do_gopher(const char *url, URLComponents *components, FILE *file)
 {
-  URLComponents components;
   Connection buffer;
   char *host;
   char type;
-  FILE *file;
+  
+  LongWord qtick;
 
-  if (!ParseURL(url, strlen(url), &components))
-  {
-    fprintf(stderr, "Invalid URL: %s\n", url);
-    return;
-  }
-
-  if (!components.host.length)
-  {
-    fprintf(stderr, "No host\n");
-    return;
-  }
-
-
-  if (!components.portNumber) components.portNumber = 70;
-
-  host = malloc(components.host.length + 1);
-  URLComponentGetC(url, &components, URLComponentHost, host);
+  if (!components->portNumber) components->portNumber = 70;
+  
+  host = malloc(components->host.length + 1);
+  URLComponentGetC(url, components, URLComponentHost, host);
 
   ConnectionInit(&buffer, MMStartUp());
   
-  ConnectionOpenC(&buffer, host,  components.portNumber);
+  ConnectionOpenC(&buffer, host,  components->portNumber);
 
-  while (!ConnectionPoll(&buffer)) ;
+  // 30 second timeout.
+  qtick = GetTick() + 30 * 60;
+  while (!ConnectionPoll(&buffer))
+  {
+    if (GetTick() >= qtick)
+    {
+      fprintf(stderr, "Connection timed out.\n");
+      // todo -- still need to close it...
+      free(host);
+      return;
+    }
+  }
 
   if (buffer.state == kConnectionStateError)
   {
     fprintf(stderr, "Unable to open host: %s:%u\n", 
       host, 
-      components.portNumber);
+      components->portNumber);
     free(host);
     return;
   }
@@ -365,12 +383,12 @@ void do_url(const char *url)
   // path is /[type][resource]
   // where [type] is 1 char and the leading / is ignored.
   
-  if (components.path.length <= 1)
+  if (components->path.length <= 1)
   {
     // / or blank
     type = '1'; // directory
   }
-  else if (components.path.length == 2)
+  else if (components->path.length == 2)
   {
     // / type
     // invalid -- treat as /
@@ -378,11 +396,11 @@ void do_url(const char *url)
   }
   else
   {
-    type = url[components.path.location+1];
+    type = url[components->path.location+1];
     TCPIPWriteTCP(
       buffer.ipid, 
-      url + components.path.location + 2, 
-      components.path.length - 2,
+      url + components->path.location + 2, 
+      components->path.length - 2,
       0,
       0);
   }
@@ -391,12 +409,6 @@ void do_url(const char *url)
 
   // 5 and 9 are binary, 1 is dir, all others text.
 
-#ifdef ORCA_BUILD
-  file = stdout; 
-#else
-  file = fdopen(STDOUT_FILENO, "wb");
-#endif
-
   switch(type)
   {
   case '1':
@@ -404,6 +416,7 @@ void do_url(const char *url)
     break;
   case '5':
   case '9':
+    fsetbinary(file);
     gopher_binary(buffer.ipid, file);
     break;
   default:
@@ -412,7 +425,6 @@ void do_url(const char *url)
   }
 
   fflush(file);
-  fclose(file);
 
   ConnectionClose(&buffer);
 
@@ -421,17 +433,173 @@ void do_url(const char *url)
   free (host);
 }
 
+void help(void)
+{
+
+  fputs("gopher [options] url\n", stdout);
+  fputs("-h         display help information.\n", stdout);
+  fputs("-v         display version information.\n", stdout);
+  fputs("-O         write output to file.\n", stdout);
+  fputs("-o <file>  write output to <file> instead of stdout.\n", stdout);
+  fputs("\n", stdout);
+  
+  exit(0);
+}
+
+/*
+ *
+ *
+ */
+
+char *get_url_filename(const char *cp, URLComponents *components)
+{
+    URLRange path;
+    int slash;
+    int i, j;
+    char *out;
+    
+    path = components->path;
+    
+    if (path.length <= 0) return NULL;
+    
+    cp += path.location;
+    
+    // scan the path, for the last '/'
+    slash = -1;
+    for (i = 0; i < path.length; ++i)
+    {
+      if (cp[i] == '/') slash = i;
+    }
+    
+    if (slash == -1 || slash + 1 >= path.length) return NULL;
+    
+    
+    out = (char *)malloc(path.length - slash);
+    if (!out) return NULL;
+    
+    j = 0;
+    i = slash + 1; // skip the slash.
+    while (i < path.length)
+      out[j++] = cp[i++];
+    
+    out[j] = 0; // null terminate.
+    
+    return out;
+}
 
 int main(int argc, char **argv)
 {
   int i;
   Word flags;
-
+  int ch;
+  char *filename = NULL;
+  int flagO = 0;
+  
   flags = StartUp(NULL);
 
-  for (i = 1; i < argc; ++i)
+  while ((ch = getopt(argc, argv, "o:Oh")) != -1)
   {
-    do_url(argv[i]);
+    switch (ch)
+    {
+    case 'v':
+        fputs("gopher v 0.1\n", stdout);
+        exit(0);
+        break;
+        
+    case 'o':
+        filename = optarg;
+        break;
+    
+    case 'O':
+        flagO = 1;
+        break;
+    
+    case 'h':
+    case '?':
+    case ':':
+    default:
+        help();
+        break;
+    }
+  
+  }
+  
+  argc -= optind;
+  argv += optind;
+
+  if (argc != 1)
+  {
+    help();
+  }
+
+  if (argc == 1)
+  {
+    const char *url;
+    URLComponents components;
+
+    url = *argv;
+    
+    if (!ParseURL(url, strlen(url), &components))
+    {
+      fprintf(stderr, "Invalid URL: %s\n", url);
+      exit(1);
+    }
+   
+    if (!components.host.length)
+    {
+      fprintf(stderr, "No host.\n");
+      exit(1);
+    }
+    
+    if (components.schemeType == SCHEME_GOPHER)
+    {
+        FILE *file = NULL;
+        
+        if (!components.portNumber) components.portNumber = 70;
+        
+        if (filename)
+        {
+            file = fopen(filename, "w");
+            if (!file)
+            {
+                fprintf(stderr, "Unable to open file ``%s'': %s", 
+                  filename, strerror(errno));
+                exit(1);
+            }
+        }
+        else if (flagO)
+        {
+            // get the file name from the URL.
+            
+            filename = get_url_filename(url, &components);
+            if (!filename)
+            {
+                fprintf(stderr, "-O flag cannot be used with this URL.\n");
+                exit(1);
+            }
+            
+            file = fopen(filename, "w");
+            if (!file)
+            {
+                fprintf(stderr, "Unable to open file ``%s'': %s", 
+                  filename, strerror(errno));
+                exit(1);            
+            }
+            
+            free(filename);
+            filename = NULL;
+        }
+        else file = stdout;
+        
+        do_gopher(url, &components, file);
+        
+        if (file != stdout) fclose(file);
+    }
+    else
+    {
+        fprintf(stderr, "Unsupported scheme.\n");
+        exit(1);
+    }
   }
 
   ShutDown(flags, false, NULL);
