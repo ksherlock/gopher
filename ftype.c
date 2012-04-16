@@ -1,13 +1,20 @@
+#pragma optimize 79
+
 #include <Types.h>
 
 int parse_ftype(const char *cp, Word size, Word *ftype, Word *atype)
 {
   Word *wp = (Word *)cp;
+  Word h;
 
   *ftype = 0;
   *atype = 0;
 
-  switch ((*cp | 0x20) ^ size)
+  if (!cp || !size) return 0;
+
+  h = ((*cp | 0x20) ^ size) & 0x0f;
+
+  switch (h)
   {
     case 0x00:
       // shk

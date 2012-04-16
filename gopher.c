@@ -16,6 +16,8 @@
 
 #include <unistd.h>
 
+extern int setfiletype(const char *filename);
+
 /*
  * connect gopher.floodgap.com:70
  * send path
@@ -566,6 +568,7 @@ int main(int argc, char **argv)
                   filename, strerror(errno));
                 exit(1);
             }
+            setfiletype(filename);
         }
         else if (flagO)
         {
@@ -585,6 +588,8 @@ int main(int argc, char **argv)
                   filename, strerror(errno));
                 exit(1);            
             }
+            
+            setfiletype(filename);
             
             free(filename);
             filename = NULL;
