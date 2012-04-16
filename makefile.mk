@@ -1,5 +1,5 @@
 CFLAGS += $(DEFINES) -v -w 
-OBJS = gopher.o url.o connection.o
+OBJS = gopher.o url.o connection.o readline2.o scheme.o ftype.o setftype.o
 
 gopher: $(OBJS)
 	$(CC) $(LDFLAGS) $(OBJS) $(LDLIBS) -o $@
@@ -14,8 +14,14 @@ dtest: dtest.o dictionary.o
 gopher.o: gopher.c url.h connection.h
 url.o: url.c url.h
 connection.o: connection.c connection.h
+readline2.o: readline2.c readline2.h
+
 data.o: data.c data.h
 dictionary.o: dictionary.c dictionary.h
+
+setftype.o: setftype.c
+scheme.o: scheme.c url.h
+ftype.o: ftype.c
 
 # tests
 utest.o: utest.c
