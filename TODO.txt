@@ -1,8 +1,5 @@
 
-
-
-* set filetype/auxtype based on extension? (mostly for .c/.h files)
-
+* timeout while receiving data?
 
 ----
 fixed
@@ -10,6 +7,8 @@ fixed
 * "-o file" to output to a named file.  
 * "-O" to output to file based on url
 * timeout for URL connection.
+
+* set filetype/auxtype based on extension? (mostly for .c/.h files)
 
 
 * Marinetti ReadLine bug?
