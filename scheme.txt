@@ -1,0 +1,99 @@
+%%
+#pragma optimize 79
+
+#include <Types.h>
+#include "url.h"
+
+void parse_scheme(const char *cp, unsigned size, URLComponents *c)
+{
+  unsigned *wp;
+  unsigned h;
+  
+  if (!c) return;
+  if (!cp || !size)
+  {
+    c->portNumber = 0;
+    c->schemeType = SCHEME_NONE;
+    return;
+  }
+  
+  wp = (unsigned *)cp;
+  h = ((*cp | 0x20) ^ size) & 0x0f;
+  
+  switch(h)
+  {
+  // --- begin auto-generated --
+%%
+  // --- end auto-generated --
+  }
+  
+  c->portNumber = 0;
+  c->schemeType = SCHEME_UNKNOWN; 
+}
+%%
+
+'file' ->
+  c->schemeType = SCHEME_FILE;
+  c->portNumber = 0;
+  return;
+.
+
+'ftp' ->
+  c->schemeType = SCHEME_FTP;
+  c->portNumber = 21;
+  return;
+.
+
+'ssh' ->
+  c->schemeType = SCHEME_SSH;
+  c->portNumber = 22;
+  return;
+.
+
+'telnet' ->
+  c->schemeType = SCHEME_TELNET;
+  c->portNumber = 23;
+  return;
+.
+
+'gopher' ->
+  c->schemeType = SCHEME_GOPHER;
+  c->portNumber = 70;
+  return;
+.
+
+'http' ->
+  c->schemeType = SCHEME_HTTP;
+  c->portNumber = 80;
+  return;
+.
+
+'sftp' ->
+  c->schemeType = SCHEME_SFTP;
+  c->portNumber = 115;
+  return;
+.
+
+'nntp' ->
+  c->schemeType = SCHEME_NNTP;
+  c->portNumber = 119;
+  return;
+.
+
+'https' ->
+  c->schemeType = SCHEME_HTTPS;
+  c->portNumber = 443;
+  return;
+.
+
+'afp' ->
+  c->schemeType = SCHEME_AFP;
+  c->portNumber = 548;
+  return;
+.
+
+'nfs' ->
+  c->schemeType = SCHEME_NFS;
+  c->portNumber = 2049;
+  return;
+.

@@ -1,0 +1,68 @@
+%%
+#pragma optimize 79
+
+#include <Types.h>
+
+int parse_ftype(const char *cp, Word size, Word *ftype, Word *atype)
+{
+  Word *wp = (Word *)cp;
+
+  *ftype = 0;
+  *atype = 0;
+  
+  switch ((*cp | 0x20) ^ size)
+  {
+%%
+  }
+
+  return 0;
+}
+%%
+
+'h' ->
+  *ftype = 0xb0;
+  *atype = 0x0008;
+  return 1;
+.
+
+'c' ->
+  *ftype = 0xb0;
+  *atype = 0x0008;
+  return 1;
+.
+
+'asm' ->
+  *ftype = 0xb0;
+  *atype = 0x0003;
+  return 1;
+.
+
+'pas' ->
+  *ftype = 0xb0;
+  *atype = 0x0005;
+  return 1;
+.
+
+'txt' ->
+  *ftype = 0x04;
+  *atype = 0x0000;
+  return 1;
+.
+
+'text' ->
+  *ftype = 0x04;
+  *atype = 0x0000;
+  return 1;
+.
+
+'shk' ->
+  *ftype = 0xe0;
+  *atype = 0x8002;
+  return 1;
+.
+
+'bxy' ->
+  *ftype = 0xe0;
+  *atype = 0x8000;
+  return 1;
+.
