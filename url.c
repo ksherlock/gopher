@@ -4,9 +4,8 @@
 #include <stdlib.h>
 #include <ctype.h>
 
-
-
 #include "url.h"
+
 
 enum {
     kScheme,
@@ -145,7 +144,7 @@ int ParseURL(const char *url, int length, struct URLComponents *components)
 
         components->scheme = range;
         
-        parseScheme(url, i, components);
+        parse_scheme(url, i, components);
         
         ++i; // skip the ':'        
     }
@@ -415,7 +414,6 @@ int ParseURL(const char *url, int length, struct URLComponents *components)
         components->portNumber = p;
     }
     
-    #if 0
     // path and query.
     // path;params?query
     range = components->path;
@@ -423,12 +421,12 @@ int ParseURL(const char *url, int length, struct URLComponents *components)
     {
         if (components->params.length)
             range.length += components->params.length + 1;
+            
         if (components->query.length)
             range.length += components->query.length + 1;
         
         components->pathAndQuery = range;
     }
-    #endif
     
     return 1;
 

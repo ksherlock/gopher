@@ -4,8 +4,8 @@ OBJS = gopher.o url.o connection.o readline2.o scheme.o ftype.o setftype.o
 gopher: $(OBJS)
 	$(CC) $(LDFLAGS) $(OBJS) $(LDLIBS) -o $@
 
-utest: utest.o url.o
-	$(CC) $(LDFLAGS) utest.o url.o -o $@
+utest: utest.o url.o scheme.o
+	$(CC) $(LDFLAGS) utest.o url.o scheme.o -o $@
 
 dtest: dtest.o dictionary.o 
 	$(CC) $(LDFLAGS) dtest.o dictionary.o -o $@

@@ -46,6 +46,9 @@ void test(const char *url)
     
     URLComponentGetC(url, &data, URLComponentFragment, buffer);        
     printf("    fragment: %s\n", buffer);
+
+    URLComponentGetC(url, &data, URLComponentPathAndQuery, buffer);        
+    printf("  path+query: %s\n", buffer);
         
     free(buffer);
         
