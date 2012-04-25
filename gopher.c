@@ -304,8 +304,11 @@ void do_gopher(const char *url, URLComponents *components, FILE *file)
       return;
     }
   }
+  
+  //s16_debug_tcp(buffer.ipid);
 
-  if (buffer.state == kConnectionStateError)
+  if (buffer.state == kConnectionStateError 
+    || buffer.state == kConnectionStateDisconnected)
   {
     fprintf(stderr, "Unable to open host: %s:%u\n", 
       host, 
