@@ -57,6 +57,8 @@ typedef struct URLComponents {
 
 int ParseURL(const char *url, int length, URLComponents *components);
 
+char *URLComponentGetCMalloc(const char *url, URLComponents *, int);
+
 int URLComponentGet(const char *url, URLComponents *, int, char *);
 int URLComponentGetC(const char *url, URLComponents *, int, char *);
 //int URLComponentGetGS(const char *url, URLComponents *, int, GSString255Ptr);

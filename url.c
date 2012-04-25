@@ -28,6 +28,35 @@ extern void parse_scheme(const char *cp, unsigned size, URLComponents *c);
  * 
  */
 
+char *URLComponentGetCMalloc(
+  const char *url, 
+  URLComponents *components, 
+  int type)
+{
+    URLRange *rangePtr;
+    URLRange r;
+    char *tmp;
+    
+    if (!url || !components) return NULL;
+
+    if (type < URLComponentScheme || type > URLComponentPathAndQuery) 
+      return NULL;
+
+    rangePtr = &components->scheme;
+    
+    r = rangePtr[type];
+
+    if (!r.length) return NULL;
+    
+    tmp = (char *)malloc(r.length + 1);
+    if (!tmp) return NULL;
+    
+    memcpy(tmp, url + r.location, r.length);
+    tmp[r.length] = 0;
+
+    return tmp;
+}
+
 int URLComponentGetC(const char *url, URLComponents *components, int type, char *dest)
 {
     URLRange *rangePtr;
