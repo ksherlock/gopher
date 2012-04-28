@@ -17,8 +17,8 @@ connection.o: connection.c connection.h
 readline2.o: readline2.c readline2.h
 common.o: common.c
 
-gopher.o: gopher.c url.h connection.h
-http.o: http.c
+gopher.o: gopher.c url.h connection.h flags.h
+http.o: http.c url.h connection.h flags.h
 
 data.o: data.c data.h
 dictionary.o: dictionary.c dictionary.h
