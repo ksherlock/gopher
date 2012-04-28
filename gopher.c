@@ -268,6 +268,7 @@ int do_gopher(const char *url, URLComponents *components)
   
   host = URLComponentGetCMalloc(url, components, URLComponentHost);
   path = URLComponentGetCMalloc(url, components, URLComponentPath);
+  
   if (!host)
   {
     fprintf(stderr, "URL `%s': no host.", url);
@@ -293,28 +294,29 @@ int do_gopher(const char *url, URLComponents *components)
   }
   
   if (flags._O)
-  {
-    if (!path)
+  {    
+    if (path)
     {
-        fprintf(stderr, "-O flag cannot be used with this URL.\n");
-        return -1;
-    }
-    
-    filename = strrchr(path + 2, '/');
-    if (filename) // *filename == '/'
-    {
-        filename++;
-        if (!filename[0])
+        filename = strrchr(path + 2, '/');
+        if (filename) // *filename == '/'
         {
-            // path/ ?
-            fprintf(stderr, "-O flag cannot be used with this URL.\n");
-            return -1;            
+            filename++;
+        }
+        else
+        {
+            filename = path + 2;
         }
     }
-    else
+    
+    if (!filename || !filename[0])
     {
-        filename = path + 2;
-    }
+        // path/ ?
+        fprintf(stderr, "-O flag cannot be used with this URL.\n");
+        free(host);
+        free(path);        
+        return -1;            
+    }   
+    
   }
   
   if (filename)
