@@ -15,7 +15,8 @@ TEXT = {
     ".h" => true,
     ".txt" => true,
     ".text" => true,
-    ".rb" => true
+    ".rb" => true,
+    '.mk' => true
 }
 
 def do_error(client, message)
