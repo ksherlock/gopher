@@ -1,5 +1,5 @@
-#ifndef __CONNECT_H__
-#define __CONNECT_H__
+#ifndef __CONNECTION_H__
+#define __CONNECTION_H__
 
 #ifndef __TCPIP__
 #include <tcpip.h>
@@ -33,7 +33,6 @@ Word ConnectionOpenGS(Connection *, const GSString255 *host, Word port);
 
 Word ConnectionClose(Connection *);
 Word ConnectionPoll(Connection *);
-
 
 
 #endif
