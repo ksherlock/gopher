@@ -5,9 +5,6 @@
 #include <MiscTool.h>
 #include <tcpip.h>
 
-#include "url.h"
-#include "connection.h"
-#include "readline2.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -15,6 +12,11 @@
 #include <errno.h>
 
 #include <unistd.h>
+
+#include "url.h"
+#include "connection.h"
+#include "readline2.h"
+#include "prototypes.h"
 
 #include "s16debug.h"
 
@@ -30,34 +32,6 @@ extern int setfiletype(const char *filename);
  */
 
 
-
-static int gopher_binary(Word ipid, FILE *file)
-{
-  // gopher binary support.
-  // format: raw data until eof.
-  Word rv = 0;
-
-  for(;;)
-  { 
-    static char buffer[512];
-    rrBuff rb;
-    Word count;
-
-    TCPIPPoll();
-    rv = TCPIPReadTCP(ipid, 0, (Ref)buffer, 512, &rb);
-
-    count = rb.rrBuffCount;
-    if (rv == 0 && count == 0) continue;
-
-    if (rv && !count) break;
-
-    if (!count) continue;
-    fwrite(buffer, 1, count, file);
-
-  }
- 
-  return rv;
-}
 
 static int gopher_text(Word ipid, FILE *file)
 {
@@ -275,47 +249,31 @@ static int gopher_dir(Word ipid, FILE *file)
   return eof ? 0 : -1;
 }
 
-void do_gopher(const char *url, URLComponents *components, FILE *file)
+int do_gopher(const char *url, URLComponents *components, FILE *file)
 {
-  Connection buffer;
+  Connection connection;
   char *host;
   char type;
-  
-  LongWord qtick;
-
+  int ok;
+    
+    
   if (!components->portNumber) components->portNumber = 70;
   
-  host = malloc(components->host.length + 1);
-  URLComponentGetC(url, components, URLComponentHost, host);
-
-  ConnectionInit(&buffer, MMStartUp());
-  
-  ConnectionOpenC(&buffer, host,  components->portNumber);
-
-  // 30 second timeout.
-  qtick = GetTick() + 30 * 60;
-  while (!ConnectionPoll(&buffer))
+  host = URLComponentGetCMalloc(url, components, URLComponentHost);
+  if (!host)
   {
-    if (GetTick() >= qtick)
-    {
-      fprintf(stderr, "Connection timed out.\n");
-      // todo -- still need to close it...
-      free(host);
-      return;
-    }
-  }
-  
-  //s16_debug_tcp(buffer.ipid);
+    fprintf(stderr, "URL `%s': no host.", url);
+    return -1;
+  }  
 
-  if (buffer.state == kConnectionStateError 
-    || buffer.state == kConnectionStateDisconnected)
+  ok = ConnectLoop(host, components->portNumber, &connection);
+  
+  if (!ok)
   {
-    fprintf(stderr, "Unable to open host: %s:%u\n", 
-      host, 
-      components->portNumber);
     free(host);
-    return;
+    return -1;
   }
+
 
   // connected....
   
@@ -337,39 +295,38 @@ void do_gopher(const char *url, URLComponents *components, FILE *file)
   {
     type = url[components->path.location+1];
     TCPIPWriteTCP(
-      buffer.ipid, 
+      connection.ipid, 
       url + components->path.location + 2, 
       components->path.length - 2,
       0,
       0);
   }
   // 
-  TCPIPWriteTCP(buffer.ipid, "\r\n", 2, true, 0);
+  TCPIPWriteTCP(connection.ipid, "\r\n", 2, true, 0);
 
   // 5 and 9 are binary, 1 is dir, all others text.
 
   switch(type)
   {
   case '1':
-    gopher_dir(buffer.ipid, file);
+    gopher_dir(connection.ipid, file);
     break;
   case '5':
   case '9':
     fsetbinary(file);
-    gopher_binary(buffer.ipid, file);
+    ok = read_binary(connection.ipid, file);
     break;
   default:
-    gopher_text(buffer.ipid, file);
+    ok = gopher_text(connection.ipid, file);
     break;
   }
 
   fflush(file);
 
-  ConnectionClose(&buffer);
-
-  while (!ConnectionPoll(&buffer)) ; // wait for it to close.
-
-  free (host);
+  CloseLoop(&connection);
+  free(host);
+  
+  return 0;
 }
 
 
