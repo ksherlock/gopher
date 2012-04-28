@@ -172,8 +172,8 @@ int main(int argc, char **argv)
         break;
         
     case 'o':
-        flags._O = 0;
         flags._o = optarg;
+        flags._O = 0;
         break;
     
     case 'O':
@@ -182,8 +182,8 @@ int main(int argc, char **argv)
         break;
         
     case '9':
-        flags._0 = 1;
-        flags._9 = 0;
+        flags._9 = 1;
+        flags._0 = 0;
         break;
         
     case '0':
