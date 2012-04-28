@@ -1,3 +1,6 @@
+#pragma optimize 79
+#pragma noroot
+
 #include "Data.h"
 #include <Memory.h>
 #include "fast.memory.h"

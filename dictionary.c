@@ -1,3 +1,6 @@
+#pragma optimize 79
+#pragma noroot
+
 #include "dictionary.h"
 #include <memory.h>
 #include <string.h>

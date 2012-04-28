@@ -1,7 +1,9 @@
 #pragma optimize 79
+#pragma noroot
 
 #include "connection.h"
 #include <string.h>
+#include "s16debug.h"
 
 static char pstring[256];
 

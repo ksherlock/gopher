@@ -1,4 +1,5 @@
 #pragma optimize 79
+#pragma noroot
 
 #include <Types.h>
 
