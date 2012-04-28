@@ -14,10 +14,8 @@ int CloseLoop(Connection *connection);
 #endif
 
 #ifdef __url_h__
-int do_gopher(const char *url, URLComponents *components, FILE *file);
-int do_http_0_9(const char *url, URLComponents *components, FILE *file);
-int do_http_1_0(const char *url, URLComponents *components, FILE *file);
-int do_http_1_1(const char *url, URLComponents *components, FILE *file);
+int do_gopher(const char *url, URLComponents *components);
+int do_http(const char *url, URLComponents *components);
 #endif
 
 #endif

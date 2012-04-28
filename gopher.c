@@ -17,6 +17,7 @@
 #include "connection.h"
 #include "readline2.h"
 #include "prototypes.h"
+#include "flags.h"
 
 #include "s16debug.h"
 
@@ -249,28 +250,97 @@ static int gopher_dir(Word ipid, FILE *file)
   return eof ? 0 : -1;
 }
 
-int do_gopher(const char *url, URLComponents *components, FILE *file)
+int do_gopher(const char *url, URLComponents *components)
 {
   Connection connection;
   char *host;
+  char *path;
   char type;
   int ok;
+  
+  FILE *file;
+  char *filename;
+  
+  file = stdout;
     
     
   if (!components->portNumber) components->portNumber = 70;
   
   host = URLComponentGetCMalloc(url, components, URLComponentHost);
+  path = URLComponentGetCMalloc(url, components, URLComponentPath);
   if (!host)
   {
     fprintf(stderr, "URL `%s': no host.", url);
+    free(path);
     return -1;
   }  
+
+  if (path && components->path.length <= 2)
+  {
+    free(path);
+    path = NULL;
+  }
+
+  // open the file.
+  filename = NULL;
+  if (flags._o)
+  {
+     filename = flags._o;
+     if (filename && !filename[0])
+       filename = NULL;
+     if (filename && filename[0] == '-' && !filename[1])
+       filename = NULL;
+  }
+  
+  if (flags._O)
+  {
+    if (!path)
+    {
+        fprintf(stderr, "-O flag cannot be used with this URL.\n");
+        return -1;
+    }
+    
+    filename = strrchr(path + 2, '/');
+    if (filename) // *filename == '/'
+    {
+        filename++;
+        if (!filename[0])
+        {
+            // path/ ?
+            fprintf(stderr, "-O flag cannot be used with this URL.\n");
+            return -1;            
+        }
+    }
+    else
+    {
+        filename = path + 2;
+    }
+  }
+  
+  if (filename)
+  {
+      file = fopen(filename, "w");
+      if (!file)
+      {
+        fprintf(stderr, "Unable to to open file ``%s'': %s\n",
+          filename, strerror(errno));
+          
+        free(host);
+        free(path);
+        return -1; 
+      }
+      
+      setfiletype(filename);
+  }
+
 
   ok = ConnectLoop(host, components->portNumber, &connection);
   
   if (!ok)
   {
     free(host);
+    free(path);
+    if (file != stdout) fclose(file);
     return -1;
   }
 
@@ -280,29 +350,26 @@ int do_gopher(const char *url, URLComponents *components, FILE *file)
   // path is /[type][resource]
   // where [type] is 1 char and the leading / is ignored.
   
-  if (components->path.length <= 1)
+  if (path)
   {
-    // / or blank
-    type = '1'; // directory
-  }
-  else if (components->path.length == 2)
-  {
-    // / type
-    // invalid -- treat as /
-    type = '1';
+    // path[0] = '/'
+    // path[1] = type
+    type = path[1];
+    TCPIPWriteTCP(
+      connection.ipid, 
+      path + 2, 
+      components->path.length - 2,
+      false,
+      false);
   }
   else
   {
-    type = url[components->path.location+1];
-    TCPIPWriteTCP(
-      connection.ipid, 
-      url + components->path.location + 2, 
-      components->path.length - 2,
-      0,
-      0);
+    type = 1;
   }
   // 
-  TCPIPWriteTCP(connection.ipid, "\r\n", 2, true, 0);
+  TCPIPWriteTCP(connection.ipid, "\r\n", 2, true, false);
+
+
 
   // 5 and 9 are binary, 1 is dir, all others text.
 
@@ -322,10 +389,12 @@ int do_gopher(const char *url, URLComponents *components, FILE *file)
   }
 
   fflush(file);
+  if (file != stdout) fclose(file);
 
   CloseLoop(&connection);
   free(host);
-  
+  free(path);
+
   return 0;
 }
 

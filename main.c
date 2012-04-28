@@ -9,11 +9,10 @@
 
 #include "url.h"
 #include "connection.h"
+#include "prototypes.h"
+#include "flags.h"
 
-
-extern int setfiletype(const char *filename);
-extern void do_gopher(const char *url, URLComponents *components, FILE *file);
-
+struct Flags flags;
 
 // startup/shutdown flags.
 enum {
@@ -91,9 +90,11 @@ void help(void)
 
   fputs("gopher [options] url\n", stdout);
   fputs("-h         display help information.\n", stdout);
-  fputs("-v         display version information.\n", stdout);
+  fputs("-V         display version information.\n", stdout);
   fputs("-O         write output to file.\n", stdout);
   fputs("-o <file>  write output to <file> instead of stdout.\n", stdout);
+  fputs("-0         use HTTP 1.0\n", stdout);
+  fputs("-9         use HTTP 0.9\n", stdout);
   fputs("\n", stdout);
   
   exit(0);
@@ -144,34 +145,50 @@ char *get_url_filename(const char *cp, URLComponents *components)
 int main(int argc, char **argv)
 {
   int i;
-  Word flags;
+  Word mf;
   int ch;
-  char *filename = NULL;
-  int flagO = 0;
   
-  flags = StartUp(NULL);
+  mf = StartUp(NULL);
 
-  if (flags == -1)
+  if (mf == -1)
   {
     fprintf(stderr, "Marinetti 3.0b3 or higher is required.\n");
     exit(1);
   }
   
-  while ((ch = getopt(argc, argv, "o:Oh")) != -1)
+  memset(&flags, 0, sizeof(flags));
+  
+  while ((ch = getopt(argc, argv, "o:OhVv09")) != -1)
   {
     switch (ch)
     {
-    case 'v':
-        fputs("gopher v 0.1\n", stdout);
+    case 'V':
+        fputs("gopher v 0.2\n", stdout);
         exit(0);
         break;
         
+    case 'v':
+        flags._v = 1;
+        break;
+        
     case 'o':
-        filename = optarg;
+        flags._O = 0;
+        flags._o = optarg;
         break;
     
     case 'O':
-        flagO = 1;
+        flags._O = 1;
+        flags._o = NULL;
+        break;
+        
+    case '9':
+        flags._0 = 1;
+        flags._9 = 0;
+        break;
+        
+    case '0':
+        flags._0 = 1;
+        flags._9 = 0;
         break;
     
     case 'h':
@@ -213,48 +230,11 @@ int main(int argc, char **argv)
     
     if (components.schemeType == SCHEME_GOPHER)
     {
-        FILE *file = NULL;
-                
-        if (filename)
-        {
-            file = fopen(filename, "w");
-            if (!file)
-            {
-                fprintf(stderr, "Unable to open file ``%s'': %s", 
-                  filename, strerror(errno));
-                exit(1);
-            }
-            setfiletype(filename);
-        }
-        else if (flagO)
-        {
-            // get the file name from the URL.
-            
-            filename = get_url_filename(url, &components);
-            if (!filename)
-            {
-                fprintf(stderr, "-O flag cannot be used with this URL.\n");
-                exit(1);
-            }
-            
-            file = fopen(filename, "w");
-            if (!file)
-            {
-                fprintf(stderr, "Unable to open file ``%s'': %s", 
-                  filename, strerror(errno));
-                exit(1);            
-            }
-            
-            setfiletype(filename);
-            
-            free(filename);
-            filename = NULL;
-        }
-        else file = stdout;
-        
-        do_gopher(url, &components, file);
-        
-        if (file != stdout) fclose(file);
+        do_gopher(url, &components);
+    }
+    else if (components.schemeType == SCHEME_HTTP)
+    {
+        do_http(url, &components);
     }
     else
     {
@@ -263,7 +243,7 @@ int main(int argc, char **argv)
     }
   }
 
-  ShutDown(flags, false, NULL);
+  ShutDown(mf, false, NULL);
 
   return 0;
 }
