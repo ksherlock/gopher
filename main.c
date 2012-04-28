@@ -91,6 +91,7 @@ void help(void)
   fputs("gopher [options] url\n", stdout);
   fputs("-h         display help information.\n", stdout);
   fputs("-V         display version information.\n", stdout);
+  fputs("-i         display http headers.\n", stdout);  
   fputs("-O         write output to file.\n", stdout);
   fputs("-o <file>  write output to <file> instead of stdout.\n", stdout);
   fputs("-0         use HTTP 1.0\n", stdout);
@@ -152,23 +153,19 @@ int main(int argc, char **argv)
 
   if (mf == -1)
   {
-    fprintf(stderr, "Marinetti 3.0b3 or higher is required.\n");
+    fprintf(stderr, "Marinetti 3.0b3 or greater is required.\n");
     exit(1);
   }
   
   memset(&flags, 0, sizeof(flags));
   
-  while ((ch = getopt(argc, argv, "o:OhVv09")) != -1)
+  while ((ch = getopt(argc, argv, "o:hiOVv09")) != -1)
   {
     switch (ch)
     {
-    case 'V':
-        fputs("gopher v 0.2\n", stdout);
-        exit(0);
-        break;
-        
-    case 'v':
-        flags._v = 1;
+
+    case 'i':
+        flags._i = 1;
         break;
         
     case 'o':
@@ -180,6 +177,10 @@ int main(int argc, char **argv)
         flags._O = 1;
         flags._o = NULL;
         break;
+
+    case 'v':
+        flags._v = 1;
+        break;
         
     case '9':
         flags._9 = 1;
@@ -189,6 +190,11 @@ int main(int argc, char **argv)
     case '0':
         flags._0 = 1;
         flags._9 = 0;
+        break;
+
+    case 'V':
+        fputs("gopher v 0.2\n", stdout);
+        exit(0);
         break;
     
     case 'h':
