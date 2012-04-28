@@ -22,6 +22,9 @@
 #include <Memory.h>
 
 #include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <errno.h>
  
 #include "url.h"
 #include "connection.h"
@@ -36,20 +39,24 @@ static int do_http_0_9(
   FILE *file, 
   const char *filename)
 {
-
+  int ok;
+  
+  char *cp;
+  int length;
+      
+  
   TCPIPWriteTCP(ipid, "GET ", 4, false, false);
 
-  if (components->pathAndQuery.length)
+  length = components->pathAndQuery.length;
+  cp = url + components->pathAndQuery.location;
+
+  if (!length)
   {
-    const char *path = url + components->pathAndQuery.location;
-    int length = components->pathAndQuery.length;
-    
-    TCPIPWriteTCP(ipid, path, length, false, false);
+    length = 1;
+    cp = "/";
   }
-  else
-  {
-    TCPIPWriteTCP(ipid, "/", 1, false, false);
-  }
+
+  TCPIPWriteTCP(ipid, cp, length, false, false);
   
   TCPIPWriteTCP(ipid, "\r\n", 2, true, false);
 
@@ -67,7 +74,8 @@ static int do_http_1_1(
   Handle dict;  
   DictionaryEnumerator e;
   Word cookie;
-
+  int ok;
+  
   char *cp;
   int length;
     
@@ -87,27 +95,26 @@ static int do_http_1_1(
   // send the request.
   // GET path HTTP/version\r\n
   
-  TCPIPWriteTCP(connection.ipid, "GET ", 4, false, false);
+  TCPIPWriteTCP(ipid, "GET ", 4, false, false);
 
   length = components->pathAndQuery.length;
   cp = url + components->pathAndQuery.location;
-    
-  if (length)
+
+  if (!length)
   {
-    TCPIPWriteTCP(ipid, cp, length, false, false);
+    length = 1;
+    cp = "/";
   }
-  else
-  {
-    TCPIPWriteTCP(connection.ipid, "/", 1, false, false);
-  }
+  
+  TCPIPWriteTCP(ipid, cp, length, false, false);
   
   if (flags._0)
   {
-    TCPIPWriteTCP(connection.ipid, " HTTP/1.0\r\n", 11, false, false);
+    TCPIPWriteTCP(ipid, " HTTP/1.0\r\n", 11, false, false);
   }
   else
   {
-    TCPIPWriteTCP(connection.ipid, " HTTP/1.1\r\n", 11, false, false);
+    TCPIPWriteTCP(ipid, " HTTP/1.1\r\n", 11, false, false);
   }
   
   // send the headers.
@@ -117,19 +124,19 @@ static int do_http_1_1(
   {
     if (!e.keySize) continue;
     
-    TCPIPWriteTCP(connection.ipid, e.key, e.keySize, false, false); 
-    TCPIPWriteTCP(connection.ipid, ": ", 2, false, false);
-    TCPIPWriteTCP(connection.ipid, e.value, e.valueSize, false, false);
-    TCPIPWriteTCP(connection.ipid, "\r\n", 2, false, false);
+    TCPIPWriteTCP(ipid, e.key, e.keySize, false, false); 
+    TCPIPWriteTCP(ipid, ": ", 2, false, false);
+    TCPIPWriteTCP(ipid, e.value, e.valueSize, false, false);
+    TCPIPWriteTCP(ipid, "\r\n", 2, false, false);
   }
   
   // end headers and push.
-  TCPIPWriteTCP(connection.ipid, "\r\n", 2, true, false);
+  TCPIPWriteTCP(ipid, "\r\n", 2, true, false);
   
   DisposeHandle(dict);
   dict = NULL;
   
-  ok = read_binary(connection.ipid, file);
+  ok = read_binary(ipid, file);
   return 0;
 }
 
@@ -143,7 +150,7 @@ int do_http(const char *url, URLComponents *components)
   Connection connection;
   int ok;
   
-  File *file;
+  FILE *file;
   
   file = stdout;
   
