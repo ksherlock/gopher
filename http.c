@@ -25,12 +25,15 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <ctype.h>
  
 #include "url.h"
 #include "connection.h"
 #include "prototypes.h"
 #include "dictionary.h"
 #include "flags.h"
+#include "readline2.h"
+#include "http.utils.h"
 
 static int do_http_0_9(
   const char *url, 
@@ -64,6 +67,131 @@ static int do_http_0_9(
   return 0;
 }
 
+
+static int parseHeaders(Word ipid, FILE *file, Handle dict)
+{
+  int prevTerm = 0;
+  int term = 0;
+  int line;
+  int status = -1;
+  
+  // todo -- timeout?
+  
+  /*
+   * HTTP/1.1 200 OK <CRLF>
+   * header: value <CRLF>
+   * header: value <CRLF>
+   * ...
+   * <CRLF>
+   */
+
+  
+  line = 0;
+  
+  TCPIPPoll();
+  
+  for (;;)
+  {
+      rlBuffer rb;
+      Handle h;
+      char *cp;
+      int ok;
+      
+      ok = ReadLine2(ipid, &rb);
+      
+      if (ok == 0)
+      {
+        TCPIPPoll();
+        continue;
+      }
+      
+      // eof = error.
+      if (ok == -1) return -1;
+      
+      // could be end of header...
+      // or a split cr/lf
+      if (rb.bufferSize == 0)
+      {
+        if (rb.terminator == '\n' && prevTerm == '\r')
+        {
+          term = TERMINATOR_CR_LF;
+          prevTerm = TERMINATOR_CR_LF;
+          continue;
+        }
+        
+        // end of header.
+        // TODO -- if term is CRLF and only a CR was read, 
+        // need to yank it later.
+        // if rb.terminater == '\r' && term == TERMINATOR_CR_LF ...
+        
+        if (line == 0) return -1; 
+        
+        break;
+      }
+      
+      prevTerm = rb.terminator;
+      
+      h = rb.bufferHandle;
+      HLock(h);
+      
+      cp = *(char **)h;
+
+      if (flags._i || flags._I)
+      {
+        fwrite(cp, 1, rb.bufferSize, file);
+        fputc('\r', file);
+      }
+      
+            
+      // line 1 is the status.
+      if (++line == 1)
+      {
+        // HTTP/1.1 200 OK
+        int i, l;
+        int version;
+        
+        term = rb.terminator;
+      
+        if (parseStatusLine(cp, rb.bufferSize, &version, &status))
+        {
+            /* ok... */
+        }
+        else
+        {
+          fprintf(stderr, "Bad HTTP status: %.*s\n", (int)rb.bufferSize, cp);
+          DisposeHandle(h);
+          return -1;
+        }
+      
+      }
+      else
+      {
+        // ^([^\s:]+):\s*(.*)$
+        // ^\s+*(.*)$ -- continuation of previous line (ignored)
+
+        URLRange key, value;
+        
+        if (parseHeaderLine(cp, rb.bufferSize, &key, &value))
+        {
+          if (key.length)
+          {
+            DictionaryAdd(dict, 
+              cp + key.location, key.length,
+              cp + value.location, value.length,
+              false);
+          }
+        
+        }
+      }
+      
+      DisposeHandle(h);
+  }
+  
+  
+  
+  return status;
+}  
+
 static int do_http_1_1(
   const char *url, 
   URLComponents *components, 
@@ -89,13 +217,18 @@ static int do_http_1_1(
   
   DictionaryAdd(dict, "Host", 4, cp, length, false);
   DictionaryAdd(dict, "Connection", 10, "close", 5, false);
+  // no gzip or compress.
+  DictionaryAdd(dict, "Accept-Encoding", 15, "identity", 8, false);
   
   // connected....
   
   // send the request.
   // GET path HTTP/version\r\n
   
-  TCPIPWriteTCP(ipid, "GET ", 4, false, false);
+  if (flags._I)
+    TCPIPWriteTCP(ipid, "HEAD ", 5, false, false);
+  else
+    TCPIPWriteTCP(ipid, "GET ", 4, false, false);
 
   length = components->pathAndQuery.length;
   cp = url + components->pathAndQuery.location;
@@ -135,6 +268,14 @@ static int do_http_1_1(
   
   DisposeHandle(dict);
   dict = NULL;
+  
+  dict = DictionaryCreate(MMStartUp(), 2048);
+  ok = parseHeaders(ipid, file, dict);
+  
+  // todo -- check the headers for content length, transfer-encoding.
+  // 
+  
+  
   
   ok = read_binary(ipid, file);
   return 0;
