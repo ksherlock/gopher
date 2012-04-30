@@ -24,9 +24,6 @@ Word DictionaryAdd(Handle h, const void *key, Word keySize,
 // removal performance is awful.
 void DictionaryRemove(Handle h, const char *key, Word keySize);
 
-
 Word DictionaryEnumerate(Handle h, DictionaryEnumerator *e, Word cookie);
-
-
 
 #endif
