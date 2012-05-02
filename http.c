@@ -20,6 +20,7 @@
 #include <TCPIP.h>
 #include <MiscTool.h>
 #include <Memory.h>
+#include <IntMath.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -34,6 +35,7 @@
 #include "flags.h"
 #include "readline2.h"
 #include "http.utils.h"
+#include "s16debug.h"
 
 static int do_http_0_9(
   const char *url, 
@@ -124,6 +126,12 @@ static int parseHeaders(Word ipid, FILE *file, Handle dict)
         // need to yank it later.
         // if rb.terminater == '\r' && term == TERMINATOR_CR_LF ...
         
+        if (rb.terminator)
+        {
+            if (flags._i || flags._I)
+                fputc('\r', file);
+        }
+        
         if (line == 0) return -1; 
         
         break;
@@ -191,6 +199,149 @@ static int parseHeaders(Word ipid, FILE *file, Handle dict)
   
   return status;
 }  
+
+enum {
+    TE_unknown = -1,
+    TE_identity = 0,
+    TE_chunked
+};
+
+int read_response(Word ipid, FILE *file, Handle dict)
+{
+    // get the file size and content encoding 
+    // from the dict.
+    // todo -- check for text/* ?
+    // -m <mimetype>?
+    
+    
+    char *value;
+    Word valueSize;
+    int transferEncoding;
+    
+    LongWord contentSize;
+    
+    
+    contentSize = 0;
+    transferEncoding = -1;
+    value = DictionaryGet(dict, "Content-Length",  14, &valueSize);
+    
+    if (value)
+    {
+        contentSize = Dec2Long(value, valueSize, 0);
+        transferEncoding = 0;
+    }
+    
+    value = DictionaryGet(dict, "Transfer-Encoding", 17, &valueSize);
+    if (value)
+    {
+        Word *wp = (Word *)value;
+        // id en ti ty ?
+        // ch un ke d ?
+        if (valueSize == 8
+            && (wp[0] | 0x2020) == 0x6469
+            && (wp[1] | 0x2020) == 0x6e65
+            && (wp[2] | 0x2020) == 0x6974
+            && (wp[3] | 0x2020) == 0x7974
+        )
+        {
+            transferEncoding = 0;
+        }
+        else if (valueSize == 7
+            && (wp[0] | 0x2020) == 0x6863
+            && (wp[1] | 0x2020) == 0x6e75
+            && (wp[2] | 0x2020) == 0x656b
+            && (value[6] | 0x20) == 0x64
+        )
+        {
+            transferEncoding = 1;
+        }
+        else
+        {
+            fprintf(stderr, "Unsupported Transfer Encoding: %.*s\n",
+                valueSize, value);
+                
+            return -1;
+        }    
+    }
+    
+    // ?
+    if (transferEncoding == -1)
+    {
+        fprintf(stderr, "Content Size not provided.\n");
+        return -1;
+    }
+    
+    
+    if (transferEncoding == 0)
+    {
+        // identity.
+        // just read contentLength bytes.
+        
+        static srBuff sr;
+        static rrBuff rr;
+        
+        int terr;
+        
+        // todo -- time out if no data for 30 seconds?
+        
+        while (contentSize)
+        {
+            LongWord count = 256;
+            
+            
+            TCPIPPoll();
+            TCPIPStatusTCP(ipid, &sr);
+            
+            count = sr.srRcvQueued;
+            if (count > contentSize) count = contentSize;
+
+            if (count == 0)
+            {
+                continue;
+            }
+            
+            terr = TCPIPReadTCP(ipid, 2, (Ref)0, count, &rr);
+            
+            if (_toolErr) break;
+            
+            if (rr.rrBuffCount)
+            {
+                Handle h = rr.rrBuffHandle;
+                HLock(h);
+                
+                fwrite(*(char **)h, 1, count, file);
+                contentSize -= rr.rrBuffCount;
+                
+                DisposeHandle(h);
+                
+                continue;
+            }
+            
+            if (terr && !rr.rrMoreFlag)
+            {
+                fprintf(stderr, "read error\n");
+                return -1;
+            }
+        }
+        
+        return 0;
+    }
+    
+    if (transferEncoding == 1)
+    {
+        // chunked..
+        // format = hex <CRLF>
+        // data .. <CRLF>
+        /// 0 <CRLF>
+    
+    }
+      
+
+
+
+}
+
+
 
 static int do_http_1_1(
   const char *url, 
@@ -275,9 +426,22 @@ static int do_http_1_1(
   // todo -- check the headers for content length, transfer-encoding.
   // 
   
+  cookie = 0;
+  while ((cookie = DictionaryEnumerate(dict, &e, cookie)))
+  {
+    s16_debug_printf("%.*s -> %.*s", 
+        e.keySize, e.key, e.valueSize, e.value);
+  }
+  
+  if (ok == 200)
+  {
+    if (!flags._I)
+    read_response(ipid, file, dict);
+  }
+  DisposeHandle(dict);
   
   
-  ok = read_binary(ipid, file);
+  //ok = read_binary(ipid, file);
   return 0;
 }
 
