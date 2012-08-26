@@ -212,6 +212,79 @@ enum {
     TE_chunked
 };
 
+int http_read_chunked(ipid, file)
+{
+
+    rlBuffer rb;
+    LongWord chunkSize;
+    LongWord count;
+    Handle h;
+    word i;
+    
+    int ok;
+    
+    for (;;)
+    {
+    
+        // get the chunk size.
+        // 0 indicates end.
+        for (;;)
+        {
+            ok = ReadLine2(ipid, &rb);     
+        
+            if (ok == 0)
+            {
+                IncBusy();
+                TCPIPPoll();
+                DecBusy();
+                continue;
+            }
+            
+            if (ok == -1) return -1;
+            
+            h = rb.bufferHandle;
+            HLock(h);
+            
+            cp = *(char **)h;
+            for (i = 0; i < (Word)rb.bufferSize; ++i)
+            {
+                if (!isxdigit(cp[i])) break;
+            }
+            if (i == 0) return -1;
+            
+            chunkSize = Hex2Long(cp, i);
+            // is there another <CRLF> pair?
+            break;
+        }
+
+        // now read the data.
+        if (chunkSize == 0) return 0; // eof.
+
+        ok = read_binary(ipid, file, chunkSize);
+        if (ok < 0) return -1;
+        if (ok != chunkSize) return -1;
+        
+        // read CRLF.
+        for(;;)
+        {
+            ok = ReadLine2(ipid, &rl);
+            if (ok == -1) return -1;
+            if (ok == 0)
+            {
+                TCPIPPoll();
+                continue;
+            }
+            if (ok == 1)
+            {
+                if (count) wtf
+                break;
+            }
+        }
+    }
+
+
+}
+
 int read_response(Word ipid, FILE *file, Handle dict)
 {
     // get the file size and content encoding 
@@ -338,16 +411,10 @@ int read_response(Word ipid, FILE *file, Handle dict)
     
     if (transferEncoding == 1)
     {
-        // chunked..
-        // format = hex <CRLF>
-        // data .. <CRLF>
-        /// 0 <CRLF>
-    
+        return http_read_chunked(ipid, file);
     }
-      
-
-
-
+    
+    return -1;
 }
 
 
@@ -417,7 +484,6 @@ static int do_http_1_1(
   while ((cookie = DictionaryEnumerate(dict, &e, cookie)))
   {
     if (!e.keySize) continue;
-    
     TCPIPWriteTCP(ipid, e.key, e.keySize, false, false); 
     TCPIPWriteTCP(ipid, ": ", 2, false, false);
     TCPIPWriteTCP(ipid, e.value, e.valueSize, false, false);
