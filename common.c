@@ -26,13 +26,17 @@ int read_binary(Word ipid, FILE *file)
     rrBuff rb;
     Word count;
 
+    IncBusy();
     rv = TCPIPReadTCP(ipid, 0, (Ref)buffer, 512, &rb);
-
+    DecBusy();
+    
     count = rb.rrBuffCount;
     if (!count)
     {
         if (rv) break;
+        IncBusy();
         TCPIPPoll();
+        DecBusy();
         continue;
     }
 
@@ -59,9 +63,11 @@ int ConnectLoop(char *host, Word port, Connection *connection)
     {
       fprintf(stderr, "Connection timed out.\n");
 
+      IncBusy();
       TCPIPAbortTCP(connection->ipid);
       TCPIPLogout(connection->ipid);      
-
+      DecBusy();
+      
       return 0;
     }
   }

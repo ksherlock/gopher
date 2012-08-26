@@ -45,8 +45,10 @@ static int gopher_text(Word ipid, FILE *file)
   int rv = 0;
   Word lastTerm = 0;
 
+  IncBusy();
   TCPIPPoll();
-
+  DecBusy();
+  
   for(;;)
   { 
     Word count;
@@ -62,7 +64,10 @@ static int gopher_text(Word ipid, FILE *file)
     if (rv < 0) break; // eof
     if (rv == 0)  // no data available (yet)
     {
+      IncBusy();
       TCPIPPoll();
+      DecBusy();
+      
       continue;
     }
 
@@ -146,11 +151,17 @@ static int gopher_dir(Word ipid, FILE *file)
     if (rv < 0) break;
     if (rv == 0)
     {
+      IncBusy();
       TCPIPPoll();
+      DecBusy();
       continue;
     }
-    if (!rb.moreFlag) TCPIPPoll();
- 
+    if (!rb.moreFlag)
+    {
+      IncBusy();
+      TCPIPPoll();
+      DecBusy();
+    }
 
     if (!count) 
     {
@@ -351,6 +362,8 @@ int do_gopher(const char *url, URLComponents *components)
   
   // path is /[type][resource]
   // where [type] is 1 char and the leading / is ignored.
+
+  IncBusy();
   
   if (path)
   {
@@ -370,6 +383,7 @@ int do_gopher(const char *url, URLComponents *components)
   }
   // 
   TCPIPWriteTCP(connection.ipid, "\r\n", 2, true, false);
+  DecBusy();
 
 
 

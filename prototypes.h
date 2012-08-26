@@ -3,6 +3,17 @@
 
 #include <stdio.h>
 
+
+#define IncBusy() asm { jsl 0xE10064 }
+#define DecBusy() asm { jsl 0xE10068 }
+#define Resched() asm { cop 0x7f }
+
+#define BusyFlag ((byte *)0xE100FFl)
+
+#define SEI() asm { sei }
+#define CLI() asm { cli }
+
+
 int read_binary(unsigned ipid, FILE *file);
 
 int setfiletype(const char *filename);

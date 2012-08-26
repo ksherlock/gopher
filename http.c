@@ -49,9 +49,9 @@ static int do_http_0_9(
   char *cp;
   int length;
       
-  
+  IncBusy();
   TCPIPWriteTCP(ipid, "GET ", 4, false, false);
-
+  
   length = components->pathAndQuery.length;
   cp = url + components->pathAndQuery.location;
 
@@ -61,9 +61,11 @@ static int do_http_0_9(
     cp = "/";
   }
 
+
   TCPIPWriteTCP(ipid, cp, length, false, false);
   
   TCPIPWriteTCP(ipid, "\r\n", 2, true, false);
+  DecBusy();
 
   ok = read_binary(ipid, file);
   return 0;
@@ -90,7 +92,9 @@ static int parseHeaders(Word ipid, FILE *file, Handle dict)
   
   line = 0;
   
+  IncBusy();
   TCPIPPoll();
+  DecBusy();
   
   for (;;)
   {
@@ -103,7 +107,9 @@ static int parseHeaders(Word ipid, FILE *file, Handle dict)
       
       if (ok == 0)
       {
+        IncBusy();
         TCPIPPoll();
+        DecBusy();
         continue;
       }
       
@@ -288,9 +294,10 @@ int read_response(Word ipid, FILE *file, Handle dict)
         {
             LongWord count = 256;
             
-            
+            IncBusy();
             TCPIPPoll();
             TCPIPStatusTCP(ipid, &sr);
+            DecBusy();
             
             count = sr.srRcvQueued;
             if (count > contentSize) count = contentSize;
@@ -300,7 +307,9 @@ int read_response(Word ipid, FILE *file, Handle dict)
                 continue;
             }
             
+            IncBusy();
             terr = TCPIPReadTCP(ipid, 2, (Ref)0, count, &rr);
+            DecBusy();
             
             if (_toolErr) break;
             
@@ -375,6 +384,7 @@ static int do_http_1_1(
   
   // send the request.
   // GET path HTTP/version\r\n
+  IncBusy();
   
   if (flags._I)
     TCPIPWriteTCP(ipid, "HEAD ", 5, false, false);
@@ -416,6 +426,7 @@ static int do_http_1_1(
   
   // end headers and push.
   TCPIPWriteTCP(ipid, "\r\n", 2, true, false);
+  DecBusy();
   
   DisposeHandle(dict);
   dict = NULL;
