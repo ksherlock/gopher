@@ -44,6 +44,7 @@ static Word LoginAndOpen(Connection *buffer)
 
 Word ConnectionPoll(Connection *buffer)
 {
+
   Word state;
   if (!buffer) return -1;
   state = buffer->state;
@@ -86,6 +87,9 @@ Word ConnectionPoll(Connection *buffer)
     {
       //CloseAndLogout(buffer);
 
+      s16_debug_printf("terr = %04x tool error = %04x", terr, _toolErr);
+      s16_debug_srbuff(&sr);
+
       TCPIPCloseTCP(buffer->ipid);
       TCPIPLogout(buffer->ipid);
       buffer->ipid = 0;
@@ -102,6 +106,9 @@ Word ConnectionPoll(Connection *buffer)
 
     if (sr.srState == TCPSCLOSED || sr.srState == TCPSTIMEWAIT)
     {
+    
+      s16_debug_srbuff(&sr);
+
       TCPIPLogout(buffer->ipid);
       buffer->ipid = 0;
       buffer->state = kConnectionStateDisconnected;
