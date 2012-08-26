@@ -1,6 +1,8 @@
 #pragma optimize 79
 
 #include <Locator.h>
+#include <TimeTool.h>
+#include <tcpip.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,10 +18,44 @@
 enum {
   kLoaded = 1,
   kStarted = 2,
-  kConnected = 4
+  kConnected = 4,
+
+  kLoadError = -1,
+  kVersionError = -2
 };
 
-Word StartUp(displayPtr fx)
+int StartUpTZ(void)
+{
+  Word status;
+  Word flags = 0;
+
+  status = tiStatus();
+
+  if (_toolErr)
+  {
+    LoadOneTool(0x38, 0x104);
+    if (_toolErr == toolVersionErr) return kVersionError;
+    if (_toolErr) return kLoadError;
+
+    status = 0;
+    flags |= kLoaded;
+  }
+
+  if (tiVersion() < 0x0104)
+  {
+    return kVersionError;
+  }
+
+  if (!status)
+  {
+    tiStartUp();
+    flags |= kStarted;
+  }
+
+  return flags;
+}
+
+int StartUpTCP(displayPtr fx)
 {
   word status;
   word flags = 0;
@@ -31,7 +67,8 @@ Word StartUp(displayPtr fx)
   if (_toolErr)
   {
     LoadOneTool(54, 0x0300);
-    if (_toolErr) return -1;
+    if (_toolErr == toolVersionErr) return kVersionError;
+    if (_toolErr) return kLoadError;
 
     status = 0;
     flags |= kLoaded;
@@ -43,14 +80,14 @@ Word StartUp(displayPtr fx)
   {
     if (flags & kLoaded)
       UnloadOneTool(54);
-    return -1;      
-  }
 
+    return kVersionError;     
+  }
 
   if (!status)
   {
     TCPIPStartUp();
-    if (_toolErr) return -1;
+    if (_toolErr) return kLoadError;
     flags |= kStarted;
   }
 
@@ -64,22 +101,32 @@ Word StartUp(displayPtr fx)
   return flags;
 }
 
-void ShutDown(word flags, Boolean force, displayPtr fx)
+void ShutDownTZ(int flags)
 {
-    if (flags & kConnected)
-    {
-      TCPIPDisconnect(force, fx);
-      if (_toolErr) return;
-    }
-    if (flags & kStarted)
-    {
-      TCPIPShutDown();
-      if (_toolErr) return;
-    }
-    if (flags & kLoaded)
-    {
-      UnloadOneTool(54);
-    }
+  if (flags <= 0) return;
+
+  if (flags & kStarted) tiShutDown();
+  if (flags & kLoaded) UnloadOneTool(0x38);
+}
+
+void ShutDownTCP(int flags, Boolean force, displayPtr fx)
+{
+  if (flags <= 0) return;
+
+  if (flags & kConnected)
+  {
+    TCPIPDisconnect(force, fx);
+    if (_toolErr) return;
+  }
+  if (flags & kStarted)
+  {
+    TCPIPShutDown();
+    if (_toolErr) return;
+  }
+  if (flags & kLoaded)
+  {
+    UnloadOneTool(54);
+  }
 }
 
 
@@ -128,7 +175,8 @@ char *get_url_filename(const char *cp, URLComponents *components)
 int main(int argc, char **argv)
 {
   int i;
-  Word mf;
+  int mf;
+  int tf;
   int x;
 
 
@@ -145,14 +193,27 @@ int main(int argc, char **argv)
     return 1;
   }
 
-    
-  mf = StartUp(NULL);
 
-  if (mf == -1)
+  tf = StartUpTZ();
+
+  if (tf < 0)
   {
+    fprintf(stderr, "Time Tool 1.0.4 or greater is required.\n");
+    exit(1);
+  }
+
+    
+  mf = StartUpTCP(NULL);
+
+  if (mf < 0)
+  {
+    ShutDownTZ(tf);
     fprintf(stderr, "Marinetti 3.0b3 or greater is required.\n");
     exit(1);
   }
+
+
+
 
 
   if (argc == 1)
@@ -189,7 +250,8 @@ int main(int argc, char **argv)
     }
   }
 
-  ShutDown(mf, false, NULL);
+  ShutDownTCP(mf, false, NULL);
+  ShutDownTZ(tf);
 
   return 0;
 }

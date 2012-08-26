@@ -29,4 +29,10 @@ int do_gopher(const char *url, URLComponents *components);
 int do_http(const char *url, URLComponents *components);
 #endif
 
+#ifdef __TYPES__
+void tiTimeRec2ISO8601(const TimeRecPtr t, char *str);
+void tiTimeRec2GMTString(const TimeRecPtr t, char *str);
+#endif
+
+
 #endif
