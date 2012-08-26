@@ -429,6 +429,7 @@ static int do_http_1_1(
   Handle dict;  
   DictionaryEnumerator e;
   Word cookie;
+  Word MyID = MMStartUp();
   int ok;
   
   char *cp;
@@ -437,7 +438,7 @@ static int do_http_1_1(
     
   // html headers.
   // (not really needed until 1.1)
-  dict = DictionaryCreate(MMStartUp(), 2048);
+  dict = DictionaryCreate(MyID, 2048);
   
   length = components->host.length;
   cp = url + components->host.location;
@@ -497,19 +498,22 @@ static int do_http_1_1(
   DisposeHandle(dict);
   dict = NULL;
   
-  dict = DictionaryCreate(MMStartUp(), 2048);
+  dict = DictionaryCreate(MyID, 2048);
   ok = parseHeaders(ipid, file, dict);
   
   // todo -- check the headers for content length, transfer-encoding.
   // 
   
+  #if 0
   cookie = 0;
   while ((cookie = DictionaryEnumerate(dict, &e, cookie)))
   {
     s16_debug_printf("%.*s -> %.*s", 
         e.keySize, e.key, e.valueSize, e.value);
   }
-  
+  #endif
+
+
   if (ok == 200)
   {
     if (!flags._I)
@@ -590,6 +594,13 @@ int do_http(const char *url, URLComponents *components)
     }
   
   }
+
+
+  // todo -- write to a tmp file rather than the named file.
+  // this will allow things like If-Modified-Since  or If-None-Match  
+  // so it only updates if changed.
+  // or -C continue to append
+  // -N -- if-modified-since header.
 
   if (filename)
   {
