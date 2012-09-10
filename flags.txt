@@ -1,0 +1,21 @@
+---
+
+options:
+  - o: { argument : true, xor: 'O' }
+  - i
+  - I
+  - v
+  - O
+  - 0: { xor: '1'}
+  - 1: { xor: '0' }
+
+help: 
+  - gopher [options] url
+  - -h         display help information
+  - -V         display version information
+  - -i         display http headers
+  - -I         http HEAD
+  - -O         write output to file
+  - -o <file>  write output to <file> instead of stdout
+  - -0         use HTTP 1.0
+  - -9         use HTTP 0.9
