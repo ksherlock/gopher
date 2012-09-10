@@ -2,20 +2,21 @@
 #define __url_h__
 
 enum {
-    SCHEME_UNKNOWN = -1,
+    SCHEME_UNKNOWN = 0xffff,
     SCHEME_NONE = 0,
     SCHEME_FILE = 0xfffe,
+
+    SCHEME_AFP = 548,
+    SCHEME_DICT = 2628,
     SCHEME_FTP = 21,
     SCHEME_GOPHER = 70,
     SCHEME_HTTP = 80,
     SCHEME_HTTPS = 443,
+    SCHEME_NFS = 2049,
     SCHEME_NNTP = 119,
-    SCHEME_TELNET = 23,
-    SCHEME_SSH = 22,
     SCHEME_SFTP = 115,
-    SCHEME_AFP = 548,
-    SCHEME_NFS = 2049
-
+    SCHEME_SSH = 22,
+    SCHEME_TELNET = 23
 };
 
 typedef struct URLRange {
