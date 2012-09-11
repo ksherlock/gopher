@@ -24,6 +24,16 @@
 
 extern int setfiletype(const char *filename);
 
+static int gopher_binary(Word ipid, FILE *file)
+{
+  ReadBlock dcb;
+  int ok;
+
+  ok = read_binary(ipid, file, &dcb);
+
+  return ok;
+}
+
 /*
  * connect gopher.floodgap.com:70
  * send path
@@ -31,8 +41,6 @@ extern int setfiletype(const char *filename);
  * text -- ends with . <CR><LF>
  * bin  -- ends when connection is closed.
  */
-
-
 
 static int gopher_text(Word ipid, FILE *file)
 {
@@ -397,7 +405,7 @@ int do_gopher(const char *url, URLComponents *components)
   case '5':
   case '9':
     fsetbinary(file);
-    ok = read_binary(connection.ipid, file);
+    ok = gopher_binary(connection.ipid, file);
     break;
   default:
     ok = gopher_text(connection.ipid, file);

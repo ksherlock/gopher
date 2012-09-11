@@ -21,6 +21,7 @@
 #include <MiscTool.h>
 #include <Memory.h>
 #include <IntMath.h>
+#include <TimeTool.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -44,6 +45,7 @@ static int do_http_0_9(
   FILE *file, 
   const char *filename)
 {
+  ReadBlock dcb;
   int ok;
   
   char *cp;
@@ -67,8 +69,8 @@ static int do_http_0_9(
   TCPIPWriteTCP(ipid, "\r\n", 2, true, false);
   DecBusy();
 
-  ok = read_binary(ipid, file);
-  return 0;
+  ok = read_binary(ipid, file, &dcb);
+  return ok;
 }
 
 
@@ -212,9 +214,9 @@ enum {
     TE_chunked
 };
 
-int http_read_chunked(ipid, file)
+int http_read_chunked(word ipid, FILE *file)
 {
-
+    ReadBlock dcb;
     rlBuffer rb;
     LongWord chunkSize;
     LongWord count;
@@ -225,7 +227,8 @@ int http_read_chunked(ipid, file)
     
     for (;;)
     {
-    
+        char *cp;
+
         // get the chunk size.
         // 0 indicates end.
         for (;;)
@@ -260,14 +263,20 @@ int http_read_chunked(ipid, file)
         // now read the data.
         if (chunkSize == 0) return 0; // eof.
 
-        ok = read_binary(ipid, file, chunkSize);
+        dcb.requestCount = chunkSize;
+        ok = read_binary_size(ipid, file, &dcb);
         if (ok < 0) return -1;
-        if (ok != chunkSize) return -1;
-        
+        if (dcb.requestCount != dcb.transferCount)
+        {
+          fprintf(stderr, "Read error - requested %ld, received %ld\n", 
+            dcb.requestCount, dcb.transferCount);
+          return -1;
+        }
+
         // read CRLF.
         for(;;)
         {
-            ok = ReadLine2(ipid, &rl);
+            ok = ReadLine2(ipid, &rb);
             if (ok == -1) return -1;
             if (ok == 0)
             {
@@ -276,13 +285,17 @@ int http_read_chunked(ipid, file)
             }
             if (ok == 1)
             {
-                if (count) wtf
+                if (rb.bufferSize)
+                {
+                  fprintf(stderr, "Unexpected data in chunked response.\n");
+                  return -1;
+                }
                 break;
             }
         }
     }
 
-
+    return 0;
 }
 
 int read_response(Word ipid, FILE *file, Handle dict)
@@ -298,6 +311,9 @@ int read_response(Word ipid, FILE *file, Handle dict)
     int transferEncoding;
     
     LongWord contentSize;
+
+    int haveTime = 0;
+    timeGSRec time;
     
     
     contentSize = 0;
@@ -342,6 +358,30 @@ int read_response(Word ipid, FILE *file, Handle dict)
             return -1;
         }    
     }
+
+    value = DictionaryGet(dict, "Last-Modified", 13, &valueSize);
+    if (value && valueSize <= 255)
+    {
+        char *pstring;
+
+        pstring = (char *)malloc(valueSize + 1);
+        if (pstring)
+        {
+            *pstring = valueSize;
+            memcpy(pstring + 1, value, valueSize);
+
+            // parse the last-modified timestamp.
+            // 0x0e00 is rfc 822 format.
+            // (which is now obsoleted by rfc 2822 but close enough)
+            tiParseDateString(&time, pstring, 0x0e00);
+            if (!_toolErr)
+            {
+                haveTime = 1;
+            }
+            free(pstring);
+        }
+    }
+
     
     // ?
     if (transferEncoding == -1)
@@ -355,57 +395,20 @@ int read_response(Word ipid, FILE *file, Handle dict)
     {
         // identity.
         // just read contentLength bytes.
-        
-        static srBuff sr;
-        static rrBuff rr;
-        
-        int terr;
-        
-        // todo -- time out if no data for 30 seconds?
-        
-        while (contentSize)
-        {
-            LongWord count = 256;
-            
-            IncBusy();
-            TCPIPPoll();
-            TCPIPStatusTCP(ipid, &sr);
-            DecBusy();
-            
-            count = sr.srRcvQueued;
-            if (count > contentSize) count = contentSize;
 
-            if (count == 0)
-            {
-                continue;
-            }
-            
-            IncBusy();
-            terr = TCPIPReadTCP(ipid, 2, (Ref)0, count, &rr);
-            DecBusy();
-            
-            if (_toolErr) break;
-            
-            if (rr.rrBuffCount)
-            {
-                Handle h = rr.rrBuffHandle;
-                HLock(h);
-                
-                fwrite(*(char **)h, 1, count, file);
-                contentSize -= rr.rrBuffCount;
-                
-                DisposeHandle(h);
-                
-                continue;
-            }
-            
-            if (terr && !rr.rrMoreFlag)
-            {
-                fprintf(stderr, "read error\n");
-                return -1;
-            }
+        ReadBlock dcb;
+        int ok;
+
+        dcb.requestCount = contentSize;
+        ok = read_binary_size(ipid, file, &dcb);
+
+        if (!ok) return -1;
+        if (dcb.transferCount != dcb.requestCount)
+        {
+            fprintf(stderr, "Read error - requested %ld, received %ld\n", 
+              dcb.requestCount, dcb.transferCount);
+            return -1;
         }
-        
         return 0;
     }
     
@@ -514,6 +517,7 @@ static int do_http_1_1(
   #endif
 
 
+
   if (ok == 200)
   {
     if (!flags._I)
@@ -522,7 +526,6 @@ static int do_http_1_1(
   DisposeHandle(dict);
   
   
-  //ok = read_binary(ipid, file);
   return 0;
 }
 

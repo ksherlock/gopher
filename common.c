@@ -12,19 +12,26 @@
 
 #include <stdio.h>
 
-#include "connection.h"
+#include "prototypes.h"
+ #include "connection.h"
 
-int read_binary(Word ipid, FILE *file)
+int read_binary(Word ipid, FILE *file, ReadBlock *dcb)
 {
   Word rv = 0;
 
+
+  if (dcb) dcb->transferCount = 0;
+
+  IncBusy();
   TCPIPPoll();
+  DecBusy();
 
   for(;;)
   { 
     static char buffer[512];
     rrBuff rb;
     Word count;
+    Word tcount;
 
     IncBusy();
     rv = TCPIPReadTCP(ipid, 0, (Ref)buffer, 512, &rb);
@@ -40,12 +47,69 @@ int read_binary(Word ipid, FILE *file)
         continue;
     }
 
-    fwrite(buffer, 1, count, file);
+    tcount = fwrite(buffer, 1, count, file);
+    if (dcb) dcb->transferCount += tcount;
+
+    if (tcount != count) return -1;
+
   }
  
-  return rv;
+  return 0;
 }
 
+// ReadTCP will only return if the entire request is fulfilled or the connection closes,
+// so it could just do that.  For a large request, this is probably nicer.
+int read_binary_size(Word ipid, FILE *file, ReadBlock *dcb)
+{
+  Word rv = 0;
+  LongWord size;
+  if (!dcb) return -1;
+
+  dcb->transferCount = 0;
+  size = dcb->requestCount;
+  if (!size) return 0;
+
+  IncBusy();
+  TCPIPPoll();
+  DecBusy();
+
+  for(;;)
+  { 
+    static char buffer[512];
+    rrBuff rb;
+    Word count;
+    Word tcount;
+
+    count = 512;
+    if (count > size) count = size;
+
+    IncBusy();
+    rv = TCPIPReadTCP(ipid, 0, (Ref)buffer, count, &rb);
+    DecBusy();
+    
+    count = rb.rrBuffCount;
+    if (!count)
+    {
+        if (rv) break;
+        IncBusy();
+        TCPIPPoll();
+        DecBusy();
+        continue;
+    }
+
+    tcount = fwrite(buffer, 1, count, file);
+
+    dcb->transferCount += tcount;
+    size -= tcount;
+
+    if (tcount != count) return -1;
+
+    if (!size) return 0;
+  }
+ 
+  return 0;
+
+}
 
 
 int ConnectLoop(char *host, Word port, Connection *connection)

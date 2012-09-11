@@ -14,7 +14,14 @@
 #define CLI() asm { cli }
 
 
-int read_binary(unsigned ipid, FILE *file);
+typedef struct ReadBlock
+{
+	LongWord requestCount;
+	LongWord transferCount;
+} ReadBlock;
+
+int read_binary(unsigned ipid, FILE *file, ReadBlock *);
+int read_binary_size(unsigned ipid, FILE *file, ReadBlock *);
 
 int setfiletype(const char *filename);
 
