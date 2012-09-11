@@ -180,7 +180,7 @@ int ReadLine2(Word ipid, rlBuffer *buffer)
     
     hsize = size + tlen;
     h = NewHandle(hsize, ur->uwUserID, attrNoSpec | attrLocked, 0);
-    if (_toolErr) return tcperrNoResources;
+    if (_toolErr) return -1; //tcperrNoResources;
 
     buffer->bufferSize = size;
     buffer->bufferHandle = h;
