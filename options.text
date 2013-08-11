@@ -1,0 +1,27 @@
+#
+# gopher command line options.
+#
+
+%extra_includes ->
+  extern void help(void);
+
+-h [virtual] ->
+  help();
+  exit(0);
+
+# -o specifies the output name
+# -O gets the name from the URL.
+-o: ->
+  options->_O = 0;
+-O
+
+-i
+-I
+-v
+
+# -[0|1] -- set HTTP version.
+-0 ->
+  options->_1 = 0;
+
+-1 ->
+  options->_0 = 0;
