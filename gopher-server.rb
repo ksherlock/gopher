@@ -17,7 +17,8 @@ TEXT = {
     ".text" => true,
     ".rb" => true,
     '.mk' => true,
-    '.asm' => true
+    '.asm' => true,
+    'makefile' => true
 }
 
 def do_error(client, message)
@@ -29,9 +30,11 @@ end
 
 def get_type(path)
 
-    ext = File.extname(path).downcase
+    path = path.downcase
+    ext = File.extname(path)
         
     return 0 if TEXT[ext]
+    return 0 if TEXT[path]
     return 9
     
 end
