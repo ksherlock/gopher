@@ -4,6 +4,13 @@
 * orca/merlin compatability
 
 
+* gopher -I http://yahoo.com ; gopher -I http://someplace else
+- the second invocation sometimes returns the results of the first.
+- seems to be an issue with the DNS lookup as it is, in fact, connecting
+  to the wrong address.
+
+- gopher -i http://... crashed, possibly in setfileattr (which should have even been called)
+
 
 ----
 fixed

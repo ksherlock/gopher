@@ -12,8 +12,9 @@
 
 #include <stdio.h>
 
+#include "options.h"
 #include "prototypes.h"
- #include "connection.h"
+#include "connection.h"
 
 int read_binary(Word ipid, FILE *file, ReadBlock *dcb)
 {
@@ -116,7 +117,7 @@ int ConnectLoop(char *host, Word port, Connection *connection)
 {
     LongWord qtick;
 
-    ConnectionInit(connection, MMStartUp());
+    ConnectionInit(connection, MMStartUp(), flags._v ? DisplayCallback : NULL);
     ConnectionOpenC(connection, host,  port);
 
   // 30 second timeout.

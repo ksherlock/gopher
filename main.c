@@ -185,6 +185,7 @@ void help(void)
   puts("");
   puts("-h       show help");
   puts("-V       show version");
+  puts("-v       be verbose");
   puts("-o file  write output to file");
   puts("-O       write output to file based on URL");
   puts("");
@@ -196,6 +197,19 @@ void help(void)
   puts("-I       print only headers (HEAD)");
 }
 
+// #pragma databank [push | pop] would be nice...
+#pragma databank 1
+pascal void DisplayCallback(const char *message)
+{
+  unsigned length;
+
+  // message is a p-string.
+  length = message ? message[0] : 0;
+  if (!length) return;
+
+  fprintf(stderr, "%.*s\n", length, message + 1);
+}
+#pragma databank 0
 
 int main(int argc, char **argv)
 {
@@ -225,7 +239,7 @@ int main(int argc, char **argv)
   }
 
     
-  mf = StartUpTCP(NULL);
+  mf = StartUpTCP(flags._v ? DisplayCallback : NULL);
 
   if (mf < 0)
   {
@@ -233,8 +247,6 @@ int main(int argc, char **argv)
     fprintf(stderr, "Marinetti 3.0b3 or greater is required.\n");
     exit(1);
   }
-
-
 
 
 
@@ -272,7 +284,7 @@ int main(int argc, char **argv)
     }
   }
 
-  ShutDownTCP(mf, false, NULL);
+  ShutDownTCP(mf, false, flags._v ? DisplayCallback : NULL);
   ShutDownTZ(tf);
 
   return 0;

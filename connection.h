@@ -14,6 +14,7 @@ enum {
   kConnectionStateError
 };
 
+typedef void (*ConnectionCallback)(const char *message);
 typedef struct Connection {
   Word memID;
   Word ipid;
@@ -21,11 +22,12 @@ typedef struct Connection {
   Word state;
   dnrBuffer dnr;
   Word port;
+  ConnectionCallback displayPtr;
 } Connection;
 
 
 
-void ConnectionInit(Connection *, Word memID);
+void ConnectionInit(Connection *, Word memID, ConnectionCallback displayPtr);
 
 Word ConnectionOpen(Connection *, const char *host, Word port);
 Word ConnectionOpenC(Connection *, const char *host, Word port);

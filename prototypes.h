@@ -14,6 +14,9 @@
 #define CLI() asm { cli }
 
 
+pascal void DisplayCallback(const char *message);
+
+
 typedef struct ReadBlock
 {
 	LongWord requestCount;

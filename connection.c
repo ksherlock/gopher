@@ -1,9 +1,13 @@
 #pragma optimize 79
 #pragma noroot
 
+#include <IntMath.h>
+#include "Memory.h"
+
 #include "connection.h"
 #include <string.h>
 #include "s16debug.h"
+
 
 static char pstring[256];
 
@@ -12,6 +16,27 @@ static Word LoginAndOpen(Connection *buffer)
 {
   Word ipid;
   Word terr;
+
+  if (buffer->displayPtr)
+  {
+    static char message[] = "\pConnecting to xxx.xxx.xxx.xxx:xxxxx";
+
+    Word length;
+    Word tmp;
+
+    length = 15;
+    // first the ip addresss...
+    tmp = TCPIPConvertIPToCASCII(buffer->dnr.DNRIPaddress, message + length, 0);
+    length += tmp;
+
+    message[length++] = ':';
+    // now the port...
+    Int2Dec(buffer->port, message + length, 5, 0);
+    length += 5;
+    message[length] = 0;
+    message[0] = length;
+    buffer->displayPtr(message);
+  }
 
   ipid = TCPIPLogin(
     buffer->memID, 
@@ -65,6 +90,12 @@ Word ConnectionPoll(Connection *buffer)
     else if (buffer->dnr.DNRstatus != DNR_Pending)
     {
       buffer->state = kConnectionStateError;
+      if (buffer->displayPtr)
+      {
+        static char message[] = "\pDNR lookup failed: $xxxx";
+        Int2Hex(buffer->dnr.DNRstatus, message + 21, 4);
+        buffer->displayPtr(message);
+      }
       return -1;
     }
   }
@@ -152,7 +183,7 @@ Word ConnectionOpen(Connection *buffer, const char *host, Word port)
   buffer->terr = 0;
   buffer->port = port;
 
-  if (!buffer || !*buffer) return -1;
+  if (!buffer || !*buffer || !host || !*host) return -1;
 
   // 1. check if we need to do DNR.
   if (TCPIPValidateIPString(host))
@@ -165,17 +196,31 @@ Word ConnectionOpen(Connection *buffer, const char *host, Word port)
     return LoginAndOpen(buffer); 
   }
   // do dnr.
+  if (buffer->displayPtr)
+  {
+    static char message[256] = "\pDNR lookup: ";
+    BlockMove(host + 1, message + 13, host[0]);
+    message[0] = 13 + host[0];
+    buffer->displayPtr(message);
+  }
+
   TCPIPDNRNameToIP(host, &buffer->dnr);
   if (_toolErr)
   {
     buffer->state = kConnectionStateError;
+    if (buffer->displayPtr)
+    {
+      static char message[] = "\pDNR lookup tool error: $xxxx";
+      Int2Hex(_toolErr, message + 25, 4);
+      buffer->displayPtr(message);
+    }
     return -1;
   }
   buffer->state = kConnectionStateDNR;
   return 0;
 }
 
-void ConnectionInit(Connection *buffer, Word memID)
+void ConnectionInit(Connection *buffer, Word memID, ConnectionCallback displayPtr)
 {
   buffer->memID = memID;
   buffer->ipid = 0;
@@ -184,6 +229,7 @@ void ConnectionInit(Connection *buffer, Word memID)
   buffer->port = 0;
   buffer->dnr.DNRstatus = 0;
   buffer->dnr.DNRIPaddress = 0;
+  buffer->displayPtr = displayPtr;
 }
 
 Word ConnectionClose(Connection *buffer)
@@ -195,6 +241,13 @@ Word ConnectionClose(Connection *buffer)
   {
     buffer->state = kConnectionStateDisconnecting;
     buffer->terr = TCPIPCloseTCP(buffer->ipid);
+
+    if (buffer->displayPtr)
+    {
+      static char message[] = "\pClosing connection: $0000";
+      Int2Hex(buffer->terr, message + 22, 4);
+      buffer->displayPtr(message);
+    }
     return 0;
   }
 
@@ -202,6 +255,12 @@ Word ConnectionClose(Connection *buffer)
   {
     TCPIPCancelDNR(&buffer->dnr);
     buffer->state = 0;
+
+    if (buffer->displayPtr)
+    {
+      static char message[] = "\pDNR lookup canceled";
+      buffer->displayPtr(message);
+    }
     return 1;
   }
 
