@@ -104,3 +104,10 @@ void parse_scheme(const char *cp, unsigned size, URLComponents *c)
   c->portNumber = 2628;
   return;
 .
+
+'smb' ->
+  c->schemeType = SCHEME_SMB;
+  c->portNumber = 445;
+  return;
+.
+

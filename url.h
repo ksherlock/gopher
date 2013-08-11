@@ -15,6 +15,7 @@ enum {
     SCHEME_NFS = 2049,
     SCHEME_NNTP = 119,
     SCHEME_SFTP = 115,
+    SCHEME_SMB = 445,
     SCHEME_SSH = 22,
     SCHEME_TELNET = 23
 };

@@ -33,6 +33,15 @@ void parse_scheme(const char *cp, unsigned size, URLComponents *c)
         c->portNumber = 2628;
         return;
       }
+      // smb
+      if (size == 3
+        && (wp[0] | 0x2020) == 0x6d73 // 'sm'
+        && (cp[2] | 0x20) == 0x62     // 'b'
+      ) {
+        c->schemeType = SCHEME_SMB;
+        c->portNumber = 445;
+        return;
+      }
       // ssh
       if (size == 3
         && (wp[0] | 0x2020) == 0x7373 // 'ss'
