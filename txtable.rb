@@ -1,4 +1,4 @@
-#!/usr/binenv ruby -w
+#!/usr/bin/env ruby -w
 
 
 def dump_rules(rules)
