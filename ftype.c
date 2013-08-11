@@ -3,30 +3,45 @@
 
 #include <Types.h>
 
-int parse_ftype(const char *cp, Word size, Word *ftype, Word *atype)
+int parse_extension(const char *cp, Word *ftype, LongWord *atype)
 {
+  Word size;
   Word *wp = (Word *)cp;
   Word h;
+  int i;
+  int pd;
 
   *ftype = 0;
   *atype = 0;
 
-  if (!cp || !size) return 0;
+
+  if (!cp || !*cp) return 0;
+
+  pd = -1;
+  for (i = 0; ; ++i)
+  {
+    char c;
+
+    c = cp[i];
+    if (c == 0) break;
+    if (c == '.') pd = i;
+  }
+
+  // pd == position of final .
+  // i == strlen
+
+  if (pd == -1) return 0;
+  if (pd + 1 >= i) return 0;
+  pd++; // skip past it...
+
+  cp += pd;
+  size = i - pd;
 
   h = ((*cp | 0x20) ^ size) & 0x0f;
 
   switch (h)
   {
     case 0x00:
-      // shk
-      if (size == 3
-        && (wp[0] | 0x2020) == 0x6873 // 'sh'
-        && (cp[2] | 0x20) == 0x6b     // 'k'
-      ) {
-        *ftype = 0xe0;
-        *atype = 0x8002;
-        return 1;
-      }
       // text
       if (size == 4
         && (wp[0] | 0x2020) == 0x6574 // 'te'
@@ -34,6 +49,15 @@ int parse_ftype(const char *cp, Word size, Word *ftype, Word *atype)
       ) {
         *ftype = 0x04;
         *atype = 0x0000;
+        return 1;
+      }
+      // shk
+      if (size == 3
+        && (wp[0] | 0x2020) == 0x6873 // 'sh'
+        && (cp[2] | 0x20) == 0x6b     // 'k'
+      ) {
+        *ftype = 0xe0;
+        *atype = 0x8002;
         return 1;
       }
       break;
@@ -51,14 +75,6 @@ int parse_ftype(const char *cp, Word size, Word *ftype, Word *atype)
       break;
 
     case 0x02:
-      // c
-      if (size == 1
-        && (cp[0] | 0x20) == 0x63     // 'c'
-      ) {
-        *ftype = 0xb0;
-        *atype = 0x0008;
-        return 1;
-      }
       // asm
       if (size == 3
         && (wp[0] | 0x2020) == 0x7361 // 'as'
@@ -66,6 +82,14 @@ int parse_ftype(const char *cp, Word size, Word *ftype, Word *atype)
       ) {
         *ftype = 0xb0;
         *atype = 0x0003;
+        return 1;
+      }
+      // c
+      if (size == 1
+        && (cp[0] | 0x20) == 0x63     // 'c'
+      ) {
+        *ftype = 0xb0;
+        *atype = 0x0008;
         return 1;
       }
       break;

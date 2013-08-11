@@ -115,7 +115,7 @@ ARGV.each {|filename|
         if !rule
             next if line == ''
             
-            if line =~ /^'([a-zA-Z0-9.+_-]+)'\s*->$/
+            if line =~ /^'([a-zA-Z0-9.+_\/-]+)'\s*->$/
                 rule = $1;
                 raise "duplicate rule: #{rule}" if rules[rule] 
                 next

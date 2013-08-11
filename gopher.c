@@ -21,8 +21,8 @@
 
 #include "s16debug.h"
 
-
-extern int setfiletype(const char *filename);
+static FileInfoRecGS FileInfo;
+static Word FileAttr;
 
 static int gopher_binary(Word ipid, FILE *file)
 {
@@ -282,6 +282,9 @@ int do_gopher(const char *url, URLComponents *components)
   
   file = stdout;
     
+
+  FileAttr = 0;
+  memset(&FileInfo, 0, sizeof(FileInfo));
     
   if (!components->portNumber) components->portNumber = 70;
   
@@ -351,7 +354,11 @@ int do_gopher(const char *url, URLComponents *components)
         return -1; 
       }
       
-      setfiletype(filename);
+      if (parse_extension(filename, &FileInfo.fileType, &FileInfo.auxType))
+      {
+        FileAttr |= ATTR_FILETYPE | ATTR_AUXTYPE;
+        setfileattr(filename, &FileInfo, FileAttr);
+      }
   }
 
 

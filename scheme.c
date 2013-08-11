@@ -24,6 +24,15 @@ void parse_scheme(const char *cp, unsigned size, URLComponents *c)
   {
   // --- begin auto-generated --
     case 0x00:
+      // dict
+      if (size == 4
+        && (wp[0] | 0x2020) == 0x6964 // 'di'
+        && (wp[1] | 0x2020) == 0x7463 // 'ct'
+      ) {
+        c->schemeType = SCHEME_DICT;
+        c->portNumber = 2628;
+        return;
+      }
       // ssh
       if (size == 3
         && (wp[0] | 0x2020) == 0x7373 // 'ss'
@@ -49,6 +58,15 @@ void parse_scheme(const char *cp, unsigned size, URLComponents *c)
       break;
 
     case 0x02:
+      // file
+      if (size == 4
+        && (wp[0] | 0x2020) == 0x6966 // 'fi'
+        && (wp[1] | 0x2020) == 0x656c // 'le'
+      ) {
+        c->schemeType = SCHEME_FILE;
+        c->portNumber = 0;
+        return;
+      }
       // afp
       if (size == 3
         && (wp[0] | 0x2020) == 0x6661 // 'af'
@@ -66,15 +84,6 @@ void parse_scheme(const char *cp, unsigned size, URLComponents *c)
       ) {
         c->schemeType = SCHEME_TELNET;
         c->portNumber = 23;
-        return;
-      }
-      // file
-      if (size == 4
-        && (wp[0] | 0x2020) == 0x6966 // 'fi'
-        && (wp[1] | 0x2020) == 0x656c // 'le'
-      ) {
-        c->schemeType = SCHEME_FILE;
-        c->portNumber = 0;
         return;
       }
       break;
@@ -128,6 +137,15 @@ void parse_scheme(const char *cp, unsigned size, URLComponents *c)
       break;
 
     case 0x0d:
+      // nfs
+      if (size == 3
+        && (wp[0] | 0x2020) == 0x666e // 'nf'
+        && (cp[2] | 0x20) == 0x73     // 's'
+      ) {
+        c->schemeType = SCHEME_NFS;
+        c->portNumber = 2049;
+        return;
+      }
       // https
       if (size == 5
         && (wp[0] | 0x2020) == 0x7468 // 'ht'
@@ -136,15 +154,6 @@ void parse_scheme(const char *cp, unsigned size, URLComponents *c)
       ) {
         c->schemeType = SCHEME_HTTPS;
         c->portNumber = 443;
-        return;
-      }
-      // nfs
-      if (size == 3
-        && (wp[0] | 0x2020) == 0x666e // 'nf'
-        && (cp[2] | 0x20) == 0x73     // 's'
-      ) {
-        c->schemeType = SCHEME_NFS;
-        c->portNumber = 2049;
         return;
       }
       break;

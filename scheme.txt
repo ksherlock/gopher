@@ -98,3 +98,9 @@ void parse_scheme(const char *cp, unsigned size, URLComponents *c)
   c->portNumber = 2049;
   return;
 .
+
+'dict' ->
+  c->schemeType = SCHEME_DICT;
+  c->portNumber = 2628;
+  return;
+.

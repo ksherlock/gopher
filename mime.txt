@@ -1,0 +1,97 @@
+%%
+#pragma optimize 79
+#pragma noroot
+
+#include <Types.h>
+
+int parse_mime_c(const char *cp, Word *ftype, LongWord *atype)
+{
+  int i;
+  int slash;
+
+  if (!cp || !*cp)
+    return 0;
+
+  /*
+   * two pass
+   * 1. type/subtype
+   * 2. type
+   */
+
+  semi = slash = -1;
+  for (i = 0; ; ++i)
+  {
+    char c = cp[i];
+    if (c == 0 || c == ';') break;
+
+    if (c == '/')
+    {
+      slash = i;
+    }
+  }
+
+  // try type/subtype
+  if (parse_mime(cp, i, ftype, atype)) 
+    return 1;
+
+  
+  // try type
+  if (slash != -1)
+    return parse_mime(cp, slash, ftype, atype));
+
+  return 0;
+}
+
+int parse_mime(const char *cp, Word size, Word *ftype, LongWord *atype)
+{
+  Word size;
+  Word *wp = (Word *)cp;
+  Word h;
+
+  if (!cp || !size) return 0;
+
+retry:
+
+  h = ((*cp | 0x20) ^ size) & 0x0f;
+
+  switch (h)
+  {
+%%
+  }
+
+/*
+  // try again as type
+  while (--size)
+  {
+    if (cp[size] == '/') goto retry;
+  }
+*/
+
+  return 0;
+}
+%%
+
+'text' ->
+  *ftype = 0x04;
+  *atype = 0x0000;
+  return 1;
+.
+
+'text/x-c' ->
+  *ftype = 0xb0;
+  *atype = 0x0008;
+  return 1;
+.
+
+'text/x-pascal' ->
+  *ftype = 0xb0;
+  *atype = 0x0005;
+  return 1;
+.
+
+'application/octet-stream' ->
+  *ftype = 0x02;
+  *atype = 0x0000;
+  return 1;
+.
+

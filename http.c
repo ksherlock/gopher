@@ -38,6 +38,10 @@
 #include "http.utils.h"
 #include "s16debug.h"
 
+
+static FileInfoRecGS FileInfo;
+static Word FileAttr;
+
 static int do_http_0_9(
   const char *url, 
   URLComponents *components, 
@@ -312,9 +316,7 @@ int read_response(Word ipid, FILE *file, Handle dict)
     
     LongWord contentSize;
 
-    int haveTime = 0;
-    timeGSRec time;
-    
+    int haveTime = 0;    
     
     contentSize = 0;
     transferEncoding = -1;
@@ -326,6 +328,11 @@ int read_response(Word ipid, FILE *file, Handle dict)
         transferEncoding = 0;
     }
     
+    /*
+     * check the transfer encoding header 
+     * should be chunked or identity (default)
+     *
+     */
     value = DictionaryGet(dict, "Transfer-Encoding", 17, &valueSize);
     if (value)
     {
@@ -359,6 +366,45 @@ int read_response(Word ipid, FILE *file, Handle dict)
         }    
     }
 
+    /*
+     * convert a content-type header mime string into
+     * a file type / aux type.
+     *
+     */
+    value = DictionaryGet(dict, "Content-Type", 12, &valueSize)
+    if (value && valueSize)
+    {
+      int i;
+      int slash = -1;
+      // strip ';'
+      for (i = 0; i < valueSize; ++i)
+      {
+        char c = value[i];
+        if (c == ';') break;
+        if (c == '/') slash = i;
+      }
+
+      // todo -- flag for this or not.
+      valueSize = i;
+      if (parse_mime(value, valueSize, 
+        &FileInfo.fileType, 
+        &FileInfo.auxType))
+      {
+        FileAttr |= ATTR_FILETYPE | ATTR_AUXTYPE;
+      }
+      else if (slash != -1 && parse_mime(value, slash, 
+        &FileInfo.fileType, 
+        &FileInfo.auxType))
+      {
+        FileAttr |= ATTR_FILETYPE | ATTR_AUXTYPE;
+      }
+
+    }
+
+    /*
+     * convert the Last Modified header into a file mod date
+     *
+     */
     value = DictionaryGet(dict, "Last-Modified", 13, &valueSize);
     if (value && valueSize <= 255)
     {
@@ -367,17 +413,31 @@ int read_response(Word ipid, FILE *file, Handle dict)
         pstring = (char *)malloc(valueSize + 1);
         if (pstring)
         {
+            struct {
+              LongWord lo;
+              LongWord hi;
+            } comp;
+
             *pstring = valueSize;
             memcpy(pstring + 1, value, valueSize);
 
             // parse the last-modified timestamp.
             // 0x0e00 is rfc 822 format.
             // (which is now obsoleted by rfc 2822 but close enough)
-            tiParseDateString(&time, pstring, 0x0e00);
-            if (!_toolErr)
+
+
+            // should use _tiDateString2Sec to get seconds
+            // then use ConvSeconds to get the date
+            // this should handle timezones. 
+
+            tiDateString2Sec(&comp, pstring, 0x0e00);
+            if (!_toolErr && hi == 0)
             {
-                haveTime = 1;
+              ConvSeconds(secs2TimeRec, comp.lo, &FileInfo.modDateTime);
+              FileAttr |= ATTR_MODTIME;
+              haveTime = 1;
             }
+
             free(pstring);
         }
     }
@@ -542,6 +602,9 @@ int do_http(const char *url, URLComponents *components)
   FILE *file;
   
   file = stdout;
+
+  FileAttr = 0;
+  memset(&FileInfo, 0, sizeof(FileInfo));
   
   if (!components->portNumber) components->portNumber = 80;
 
@@ -575,6 +638,8 @@ int do_http(const char *url, URLComponents *components)
     if (path)
     {    
         // path starts with /.
+
+        // todo -- also need to strip any ? parameters.
         
         filename = strrchr(path + 1, '/');
         if (filename) // *filename == '/'
@@ -618,9 +683,11 @@ int do_http(const char *url, URLComponents *components)
         return -1; 
       }
 
-      // should set from mime type?      
-      setfiletype(filename);
-      
+      // hmm, flag for this vs content type?
+      if (parse_extension_c(filename, &FileInfo.fileType, &FileInfo.auxType))
+      {
+        FileAttr |= ATTR_FILETYPE | ATTR_AUXTYPE;
+      }
   }
   
   
@@ -646,6 +713,8 @@ int do_http(const char *url, URLComponents *components)
   fflush(file);
   if (file != stdout) fclose(file);
   
+  if (filename) setfileattr(filename, &FileInfo, FileAttr);
+
   CloseLoop(&connection);
   free(host);
   free(path);

@@ -5,54 +5,33 @@
 #include <stdlib.h>
 #include <gno/gno.h>
 
-extern int parse_ftype(const char *cp, Word size, Word *ftype, Word *atype);
-
-int setfiletype(const char *filename)
+int setfileattr(const char *filename, FileInfoRecGS *info, unsigned flags)
 {
-    int pd;
-    int i;
-    
-    Word ftype;
-    Word atype;
-    int rv;
-    
-    FileInfoRecGS info;
-    
-    // find the extension in the filename.
-    
-    pd = -1;
-    for (i = 0; ; ++i)
-    {
-        char c;
-        
-        c = filename[i];
-        if (c == 0) break;
-        if (c == '.') pd = i;
-    } 
-    
-    // pd == position of final .
-    // i == strlen
-    
-    if (pd == -1) return 0;
-    if (pd + 1 >= i) return 0;
-    pd++; // skip past it...
-    
-    if (!parse_ftype(filename + pd, i - pd, &ftype, &atype)) 
-        return 0;
-        
-    info.pCount = 4;
-    info.pathname = (GSString255Ptr)__C2GSMALLOC(filename);
-    info.access = 0xe3;
-    info.auxType = atype;
-    info.fileType = ftype;
-    
-    //GetFileInfoGS(&info);
-    //if (_toolErr) return 0;
-    
-    SetFileInfoGS(&info);
-    rv = _toolErr;
-    if (_toolErr)
+    Word rv;
+    FileInfoRecGS tmp;
 
-    free(info.pathname);
+    if (!info) return 0;
+    if (!flags) return 1;
+
+    tmp.pCount = 7;
+    tmp.pathname = (GSString255Ptr)__C2GSMALLOC(filename);
+    if (!tmp.pathname) return 0;
+
+    GetFileInfoGS(&tmp);
+    rv = _toolErr;
+    if (!_toolErr)
+    {
+        if (flags & ATTR_ACCESS) tmp.access = info->access;
+        if (flags & ATTR_FILETYPE) tmp.fileType = info->fileType;
+        if (flags & ATTR_AUXTYPE) tmp.auxType = info->auxType;
+        if (flags & ATTR_CREATETIME) tmp.createDateTime = info->createDateTime;
+        if (flags & ATTR_MODTIME) tmp.modDateTime = info->modDateTime;
+
+        SetFileInfoGS(&tmp);
+        rv = _toolErr;
+    }
+
+    free (tmp.pathname);
+
     return rv ? 0 : 1;
 }

@@ -4,15 +4,44 @@
 
 #include <Types.h>
 
-int parse_ftype(const char *cp, Word size, Word *ftype, Word *atype)
+// cp should be a filename w/ .ext
+int parse_extension_c(const char *cp, Word *ftype, LongWord *atype)
 {
+  int i;
+  int pd;
+
+  if (!cp || !*cp) return 0;
+
+  pd = -1;
+  for (i = 0; ; ++i)
+  {
+    char c;
+    
+    c = cp[i];
+    if (c == 0) break;
+    if (c == '.') pd = i;
+  } 
+
+  // pd == position of final .
+  // i == strlen
+  
+  if (pd == -1) return 0;
+  if (pd + 1 >= i) return 0;
+  pd++; // skip past it...
+
+  return parse_extension(cp + pd, i - pd, ftype, atype);
+}
+
+// cp is just the extension
+int parse_extension(const char *cp, Word size, Word *ftype, LongWord *atype)
+{
+  Word size;
   Word *wp = (Word *)cp;
   Word h;
-  
-  *ftype = 0;
-  *atype = 0;
-  
+
+
   if (!cp || !size) return 0;
+
   
   h = ((*cp | 0x20) ^ size) & 0x0f;
   
