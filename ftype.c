@@ -3,17 +3,12 @@
 
 #include <Types.h>
 
-int parse_extension(const char *cp, Word *ftype, LongWord *atype)
+// cp should be a filename w/ .ext
+int parse_extension(const char *cp, Word size, Word *ftype, LongWord *atype);
+int parse_extension_c(const char *cp, Word *ftype, LongWord *atype)
 {
-  Word size;
-  Word *wp = (Word *)cp;
-  Word h;
   int i;
   int pd;
-
-  *ftype = 0;
-  *atype = 0;
-
 
   if (!cp || !*cp) return 0;
 
@@ -34,23 +29,24 @@ int parse_extension(const char *cp, Word *ftype, LongWord *atype)
   if (pd + 1 >= i) return 0;
   pd++; // skip past it...
 
-  cp += pd;
-  size = i - pd;
+  return parse_extension(cp + pd, i - pd, ftype, atype);
+}
+
+// cp is just the extension
+int parse_extension(const char *cp, Word size, Word *ftype, LongWord *atype)
+{
+  Word *wp = (Word *)cp;
+  Word h;
+
+
+  if (!cp || !size) return 0;
+
 
   h = ((*cp | 0x20) ^ size) & 0x0f;
 
   switch (h)
   {
     case 0x00:
-      // text
-      if (size == 4
-        && (wp[0] | 0x2020) == 0x6574 // 'te'
-        && (wp[1] | 0x2020) == 0x7478 // 'xt'
-      ) {
-        *ftype = 0x04;
-        *atype = 0x0000;
-        return 1;
-      }
       // shk
       if (size == 3
         && (wp[0] | 0x2020) == 0x6873 // 'sh'
@@ -58,6 +54,15 @@ int parse_extension(const char *cp, Word *ftype, LongWord *atype)
       ) {
         *ftype = 0xe0;
         *atype = 0x8002;
+        return 1;
+      }
+      // text
+      if (size == 4
+        && (wp[0] | 0x2020) == 0x6574 // 'te'
+        && (wp[1] | 0x2020) == 0x7478 // 'xt'
+      ) {
+        *ftype = 0x04;
+        *atype = 0x0000;
         return 1;
       }
       break;

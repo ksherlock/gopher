@@ -5,6 +5,7 @@
 #include <Types.h>
 
 // cp should be a filename w/ .ext
+int parse_extension(const char *cp, Word size, Word *ftype, LongWord *atype);
 int parse_extension_c(const char *cp, Word *ftype, LongWord *atype)
 {
   int i;
@@ -35,7 +36,6 @@ int parse_extension_c(const char *cp, Word *ftype, LongWord *atype)
 // cp is just the extension
 int parse_extension(const char *cp, Word size, Word *ftype, LongWord *atype)
 {
-  Word size;
   Word *wp = (Word *)cp;
   Word h;
 
