@@ -32,12 +32,13 @@
  
 #include "url.h"
 #include "connection.h"
-#include "prototypes.h"
 #include "dictionary.h"
-#include "flags.h"
+#include "options.h"
 #include "readline2.h"
 #include "http.utils.h"
 #include "s16debug.h"
+
+#include "prototypes.h"
 
 
 static FileInfoRecGS FileInfo;

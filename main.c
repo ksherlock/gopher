@@ -11,8 +11,9 @@
 
 #include "url.h"
 #include "connection.h"
+#include "options.h"
+
 #include "prototypes.h"
-#include "flags.h"
 
 // startup/shutdown flags.
 enum {
@@ -171,6 +172,30 @@ char *get_url_filename(const char *cp, URLComponents *components)
     return out;
 }
 
+#define GOPHER_VERSION "0.3"
+void version(void)
+{
+  puts("gopher version " GOPHER_VERSION);
+}
+
+void help(void)
+{
+  puts("gopher version " GOPHER_VERSION);
+  puts("usage: gopher [options] url");
+  puts("");
+  puts("-h       show help");
+  puts("-V       show version");
+  puts("-o file  write output to file");
+  puts("-O       write output to file based on URL");
+  puts("");
+  puts("HTTP options:");
+  puts("-9       use HTTP version 0.9");
+  puts("-0       use HTTP version 1.0");
+  puts("-1       use HTTP version 1.1");
+  puts("-i       print headers");
+  puts("-I       print only headers (HEAD)");
+}
+
 
 int main(int argc, char **argv)
 {
@@ -180,14 +205,11 @@ int main(int argc, char **argv)
   int x;
 
 
-  x = ParseFlags(argc, argv);
-  if (x < 0) return 1;
-  
-  argv += x;
-  argc -= x;
+  memset(&flags, 0, sizeof(flags));
+  argc = GetOptions(argc, argv, &flags);
 
 
-  if (argc != 1)
+  if (argc != 2)
   {
     help();
     return 1;
@@ -216,12 +238,12 @@ int main(int argc, char **argv)
 
 
 
-  if (argc == 1)
+  if (argc == 2)
   {
     const char *url;
     URLComponents components;
 
-    url = *argv;
+    url = argv[1];
     
     if (!ParseURL(url, strlen(url), &components))
     {

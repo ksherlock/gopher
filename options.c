@@ -9,6 +9,9 @@
 #include "options.h"
 
   extern void help(void);
+  extern void version(void);
+  /* global */
+  struct Options flags;
 
 int GetOptions(int argc, char **argv, 
   struct Options *options)
@@ -53,16 +56,27 @@ int GetOptions(int argc, char **argv,
         case '0':
           options->_0 = 1;
             options->_1 = 0;
+            options->_9 = 0;
           break;
         case '1':
           options->_1 = 1;
             options->_0 = 0;
+            options->_9 = 0;
+          break;
+        case '9':
+          options->_9 = 1;
+            options->_0 = 0;
+            options->_1 = 0;
           break;
         case 'I':
           options->_I = 1;
           break;
         case 'O':
           options->_O = 1;
+          break;
+        case 'V':
+            version();
+            exit(0);
           break;
         case 'h':
             help();

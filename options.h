@@ -5,6 +5,7 @@ typedef struct Options
 {
   unsigned _0:1;
   unsigned _1:1;
+  unsigned _9:1;
   unsigned _I:1;
   unsigned _O:1;
   unsigned _i:1;

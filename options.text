@@ -4,15 +4,25 @@
 
 %extra_includes ->
   extern void help(void);
+  extern void version(void);
+  /* global */
+  struct Options flags;
+
+
 
 -h [virtual] ->
   help();
+  exit(0);
+
+-V [virtual] ->
+  version();
   exit(0);
 
 # -o specifies the output name
 # -O gets the name from the URL.
 -o: ->
   options->_O = 0;
+
 -O
 
 -i
@@ -20,8 +30,15 @@
 -v
 
 # -[0|1] -- set HTTP version.
+
 -0 ->
   options->_1 = 0;
+  options->_9 = 0;
 
 -1 ->
   options->_0 = 0;
+  options->_9 = 0;
+
+-9 ->
+  options->_0 = 0;
+  options->_1 = 0;

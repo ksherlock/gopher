@@ -59,5 +59,8 @@ void tiTimeRec2ISO8601(const TimeRecPtr t, char *str);
 void tiTimeRec2GMTString(const TimeRecPtr t, char *str);
 #endif
 
+#ifdef __Options__
+extern struct Options flags;
+#endif
 
 #endif
