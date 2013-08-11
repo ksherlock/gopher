@@ -121,14 +121,14 @@ void s16_debug_srbuff(const srBuff *sb)
     );
 */
 
-    s16_debug_printf("             srState: $%04x", sb->srState);
-    s16_debug_printf("      srNetworkError: $%04x", sb->srNetworkError);
-    s16_debug_printf("         srSndQueued: $%08lx", sb->srSndQueued);
-    s16_debug_printf("         srRcvQueued: $%08lx", sb->srRcvQueued);
-    s16_debug_printf("            srDestIP: $%08lx", sb->srDestIP);
-    s16_debug_printf("          srDestPort: $%04x", sb->srDestPort);
-    s16_debug_printf("       srConnectType: $%04x", sb->srConnectType);
-    s16_debug_printf("       srAcceptCount: $%04x", sb->srAcceptCount);
+    s16_debug_printf("             srState: $%04x\n", sb->srState);
+    s16_debug_printf("      srNetworkError: $%04x\n", sb->srNetworkError);
+    s16_debug_printf("         srSndQueued: $%08lx\n", sb->srSndQueued);
+    s16_debug_printf("         srRcvQueued: $%08lx\n", sb->srRcvQueued);
+    s16_debug_printf("            srDestIP: $%08lx\n", sb->srDestIP);
+    s16_debug_printf("          srDestPort: $%04x\n", sb->srDestPort);
+    s16_debug_printf("       srConnectType: $%04x\n", sb->srConnectType);
+    s16_debug_printf("       srAcceptCount: $%04x\n", sb->srAcceptCount);
 
 }
 
@@ -151,58 +151,58 @@ void s16_debug_tcp(unsigned ipid)
     
     // -- auto-generated --
     
-    s16_debug_printf("            uwUserID: $%04x", ur->uwUserID);
-    s16_debug_printf("            uwDestIP: $%08lx", ur->uwDestIP);
-    s16_debug_printf("          uwDestPort: $%04x", ur->uwDestPort);
-    s16_debug_printf("            uwIP_TOS: $%04x", ur->uwIP_TOS);
-    s16_debug_printf("            uwIP_TTL: $%04x", ur->uwIP_TTL);
-    s16_debug_printf("        uwSourcePort: $%04x", ur->uwSourcePort);
-    s16_debug_printf("     uwLogoutPending: $%04x", ur->uwLogoutPending);
-    s16_debug_printf("         uwICMPQueue: $%08lx", ur->uwICMPQueue);
-    s16_debug_printf("          uwTCPQueue: $%08lx", ur->uwTCPQueue);
-    s16_debug_printf("     uwTCPMaxSendSeg: $%04x", ur->uwTCPMaxSendSeg);
-    s16_debug_printf("  uwTCPMaxReceiveSeg: $%04x", ur->uwTCPMaxReceiveSeg);
-    s16_debug_printf("        uwTCPDataInQ: $%08lx", ur->uwTCPDataInQ);
-    s16_debug_printf("         uwTCPDataIn: $%08lx", ur->uwTCPDataIn);
-    s16_debug_printf("     uwTCPPushInFlag: $%04x", ur->uwTCPPushInFlag);
-    s16_debug_printf("   uwTCPPushInOffset: $%08lx", ur->uwTCPPushInOffset);
-    s16_debug_printf("    uwTCPPushOutFlag: $%04x", ur->uwTCPPushOutFlag);
-    s16_debug_printf("     uwTCPPushOutSEQ: $%08lx", ur->uwTCPPushOutSEQ);
-    s16_debug_printf("        uwTCPDataOut: $%08lx", ur->uwTCPDataOut);
-    s16_debug_printf("           uwSND_UNA: $%08lx", ur->uwSND_UNA);
-    s16_debug_printf("           uwSND_NXT: $%08lx", ur->uwSND_NXT);
-    s16_debug_printf("           uwSND_WND: $%04x", ur->uwSND_WND);
-    s16_debug_printf("            uwSND_UP: $%04x", ur->uwSND_UP);
-    s16_debug_printf("           uwSND_WL1: $%08lx", ur->uwSND_WL1);
-    s16_debug_printf("           uwSND_WL2: $%08lx", ur->uwSND_WL2);
-    s16_debug_printf("               uwISS: $%08lx", ur->uwISS);
-    s16_debug_printf("           uwRCV_NXT: $%08lx", ur->uwRCV_NXT);
-    s16_debug_printf("           uwRCV_WND: $%04x", ur->uwRCV_WND);
-    s16_debug_printf("            uwRCV_UP: $%04x", ur->uwRCV_UP);
-    s16_debug_printf("               uwIRS: $%08lx", ur->uwIRS);
-    s16_debug_printf("         uwTCP_State: $%04x", ur->uwTCP_State);
-    s16_debug_printf("     uwTCP_StateTick: $%08lx", ur->uwTCP_StateTick);
-    s16_debug_printf("       uwTCP_ErrCode: $%04x", ur->uwTCP_ErrCode);
-    s16_debug_printf("     uwTCP_ICMPError: $%04x", ur->uwTCP_ICMPError);
-    s16_debug_printf("        uwTCP_Server: $%04x", ur->uwTCP_Server);
-    s16_debug_printf("     uwTCP_ChildList: $%08lx", ur->uwTCP_ChildList);
-    s16_debug_printf("    uwTCP_ACKPending: $%04x", ur->uwTCP_ACKPending);
-    s16_debug_printf("      uwTCP_ForceFIN: $%04x", ur->uwTCP_ForceFIN);
-    s16_debug_printf("        uwTCP_FINSEQ: $%08lx", ur->uwTCP_FINSEQ);
-    s16_debug_printf("    uwTCP_MyFINACKed: $%04x", ur->uwTCP_MyFINACKed);
-    s16_debug_printf("         uwTCP_Timer: $%08lx", ur->uwTCP_Timer);
-    s16_debug_printf("    uwTCP_TimerState: $%04x", ur->uwTCP_TimerState);
-    s16_debug_printf("      uwTCP_rt_timer: $%04x", ur->uwTCP_rt_timer);
-    s16_debug_printf("    uwTCP_2MSL_timer: $%04x", ur->uwTCP_2MSL_timer);
-    s16_debug_printf("       uwTCP_SaveTTL: $%04x", ur->uwTCP_SaveTTL);
-    s16_debug_printf("       uwTCP_SaveTOS: $%04x", ur->uwTCP_SaveTOS);
-    s16_debug_printf("       uwTCP_TotalIN: $%08lx", ur->uwTCP_TotalIN);
-    s16_debug_printf("      uwTCP_TotalOUT: $%08lx", ur->uwTCP_TotalOUT);
-    s16_debug_printf("        uwUDP_Server: $%04x", ur->uwUDP_Server);
-    s16_debug_printf("          uwUDPQueue: $%08lx", ur->uwUDPQueue);
-    s16_debug_printf("          uwUDPError: $%04x", ur->uwUDPError);
-    s16_debug_printf("      uwUDPErrorTick: $%08lx", ur->uwUDPErrorTick);
-    s16_debug_printf("          uwUDPCount: $%08lx", ur->uwUDPCount);
+    s16_debug_printf("            uwUserID: $%04x\n", ur->uwUserID);
+    s16_debug_printf("            uwDestIP: $%08lx\n", ur->uwDestIP);
+    s16_debug_printf("          uwDestPort: $%04x\n", ur->uwDestPort);
+    s16_debug_printf("            uwIP_TOS: $%04x\n", ur->uwIP_TOS);
+    s16_debug_printf("            uwIP_TTL: $%04x\n", ur->uwIP_TTL);
+    s16_debug_printf("        uwSourcePort: $%04x\n", ur->uwSourcePort);
+    s16_debug_printf("     uwLogoutPending: $%04x\n", ur->uwLogoutPending);
+    s16_debug_printf("         uwICMPQueue: $%08lx\n", ur->uwICMPQueue);
+    s16_debug_printf("          uwTCPQueue: $%08lx\n", ur->uwTCPQueue);
+    s16_debug_printf("     uwTCPMaxSendSeg: $%04x\n", ur->uwTCPMaxSendSeg);
+    s16_debug_printf("  uwTCPMaxReceiveSeg: $%04x\n", ur->uwTCPMaxReceiveSeg);
+    s16_debug_printf("        uwTCPDataInQ: $%08lx\n", ur->uwTCPDataInQ);
+    s16_debug_printf("         uwTCPDataIn: $%08lx\n", ur->uwTCPDataIn);
+    s16_debug_printf("     uwTCPPushInFlag: $%04x\n", ur->uwTCPPushInFlag);
+    s16_debug_printf("   uwTCPPushInOffset: $%08lx\n", ur->uwTCPPushInOffset);
+    s16_debug_printf("    uwTCPPushOutFlag: $%04x\n", ur->uwTCPPushOutFlag);
+    s16_debug_printf("     uwTCPPushOutSEQ: $%08lx\n", ur->uwTCPPushOutSEQ);
+    s16_debug_printf("        uwTCPDataOut: $%08lx\n", ur->uwTCPDataOut);
+    s16_debug_printf("           uwSND_UNA: $%08lx\n", ur->uwSND_UNA);
+    s16_debug_printf("           uwSND_NXT: $%08lx\n", ur->uwSND_NXT);
+    s16_debug_printf("           uwSND_WND: $%04x\n", ur->uwSND_WND);
+    s16_debug_printf("            uwSND_UP: $%04x\n", ur->uwSND_UP);
+    s16_debug_printf("           uwSND_WL1: $%08lx\n", ur->uwSND_WL1);
+    s16_debug_printf("           uwSND_WL2: $%08lx\n", ur->uwSND_WL2);
+    s16_debug_printf("               uwISS: $%08lx\n", ur->uwISS);
+    s16_debug_printf("           uwRCV_NXT: $%08lx\n", ur->uwRCV_NXT);
+    s16_debug_printf("           uwRCV_WND: $%04x\n", ur->uwRCV_WND);
+    s16_debug_printf("            uwRCV_UP: $%04x\n", ur->uwRCV_UP);
+    s16_debug_printf("               uwIRS: $%08lx\n", ur->uwIRS);
+    s16_debug_printf("         uwTCP_State: $%04x\n", ur->uwTCP_State);
+    s16_debug_printf("     uwTCP_StateTick: $%08lx\n", ur->uwTCP_StateTick);
+    s16_debug_printf("       uwTCP_ErrCode: $%04x\n", ur->uwTCP_ErrCode);
+    s16_debug_printf("     uwTCP_ICMPError: $%04x\n", ur->uwTCP_ICMPError);
+    s16_debug_printf("        uwTCP_Server: $%04x\n", ur->uwTCP_Server);
+    s16_debug_printf("     uwTCP_ChildList: $%08lx\n", ur->uwTCP_ChildList);
+    s16_debug_printf("    uwTCP_ACKPending: $%04x\n", ur->uwTCP_ACKPending);
+    s16_debug_printf("      uwTCP_ForceFIN: $%04x\n", ur->uwTCP_ForceFIN);
+    s16_debug_printf("        uwTCP_FINSEQ: $%08lx\n", ur->uwTCP_FINSEQ);
+    s16_debug_printf("    uwTCP_MyFINACKed: $%04x\n", ur->uwTCP_MyFINACKed);
+    s16_debug_printf("         uwTCP_Timer: $%08lx\n", ur->uwTCP_Timer);
+    s16_debug_printf("    uwTCP_TimerState: $%04x\n", ur->uwTCP_TimerState);
+    s16_debug_printf("      uwTCP_rt_timer: $%04x\n", ur->uwTCP_rt_timer);
+    s16_debug_printf("    uwTCP_2MSL_timer: $%04x\n", ur->uwTCP_2MSL_timer);
+    s16_debug_printf("       uwTCP_SaveTTL: $%04x\n", ur->uwTCP_SaveTTL);
+    s16_debug_printf("       uwTCP_SaveTOS: $%04x\n", ur->uwTCP_SaveTOS);
+    s16_debug_printf("       uwTCP_TotalIN: $%08lx\n", ur->uwTCP_TotalIN);
+    s16_debug_printf("      uwTCP_TotalOUT: $%08lx\n", ur->uwTCP_TotalOUT);
+    s16_debug_printf("        uwUDP_Server: $%04x\n", ur->uwUDP_Server);
+    s16_debug_printf("          uwUDPQueue: $%08lx\n", ur->uwUDPQueue);
+    s16_debug_printf("          uwUDPError: $%04x\n", ur->uwUDPError);
+    s16_debug_printf("      uwUDPErrorTick: $%08lx\n", ur->uwUDPErrorTick);
+    s16_debug_printf("          uwUDPCount: $%08lx\n", ur->uwUDPCount);
 
 }
 

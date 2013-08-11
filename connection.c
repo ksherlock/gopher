@@ -87,7 +87,7 @@ Word ConnectionPoll(Connection *buffer)
     {
       //CloseAndLogout(buffer);
 
-      s16_debug_printf("terr = %04x tool error = %04x", terr, _toolErr);
+      s16_debug_printf("terr = %04x tool error = %04x\n", terr, _toolErr);
       s16_debug_srbuff(&sr);
 
       TCPIPCloseTCP(buffer->ipid);
