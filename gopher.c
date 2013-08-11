@@ -1,6 +1,7 @@
 #pragma optimize 79
 #pragma noroot
 
+#include <GSOS.h>
 #include <Memory.h>
 #include <MiscTool.h>
 #include <tcpip.h>
@@ -354,7 +355,7 @@ int do_gopher(const char *url, URLComponents *components)
         return -1; 
       }
       
-      if (parse_extension(filename, &FileInfo.fileType, &FileInfo.auxType))
+      if (parse_extension_c(filename, &FileInfo.fileType, &FileInfo.auxType))
       {
         FileAttr |= ATTR_FILETYPE | ATTR_AUXTYPE;
         setfileattr(filename, &FileInfo, FileAttr);

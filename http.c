@@ -22,6 +22,7 @@
 #include <Memory.h>
 #include <IntMath.h>
 #include <TimeTool.h>
+#include <GSOS.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -371,7 +372,7 @@ int read_response(Word ipid, FILE *file, Handle dict)
      * a file type / aux type.
      *
      */
-    value = DictionaryGet(dict, "Content-Type", 12, &valueSize)
+    value = DictionaryGet(dict, "Content-Type", 12, &valueSize);
     if (value && valueSize)
     {
       int i;
@@ -416,7 +417,7 @@ int read_response(Word ipid, FILE *file, Handle dict)
             struct {
               LongWord lo;
               LongWord hi;
-            } comp;
+            } xcomp;
 
             *pstring = valueSize;
             memcpy(pstring + 1, value, valueSize);
@@ -430,10 +431,11 @@ int read_response(Word ipid, FILE *file, Handle dict)
             // then use ConvSeconds to get the date
             // this should handle timezones. 
 
-            tiDateString2Sec(&comp, pstring, 0x0e00);
-            if (!_toolErr && hi == 0)
+            tiDateString2Sec(&xcomp, pstring, 0x0e00);
+            if (!_toolErr && xcomp.hi == 0)
             {
-              ConvSeconds(secs2TimeRec, comp.lo, &FileInfo.modDateTime);
+              ConvSeconds(secs2TimeRec, (Long)xcomp.lo,
+                (Pointer)&FileInfo.modDateTime);
               FileAttr |= ATTR_MODTIME;
               haveTime = 1;
             }
@@ -571,7 +573,7 @@ static int do_http_1_1(
   cookie = 0;
   while ((cookie = DictionaryEnumerate(dict, &e, cookie)))
   {
-    s16_debug_printf("%.*s -> %.*s", 
+    s16_debug_printf("%.*s -> %.*s\n", 
         e.keySize, e.key, e.valueSize, e.value);
   }
   #endif

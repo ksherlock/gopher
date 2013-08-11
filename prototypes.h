@@ -27,7 +27,7 @@ int parse_extension_c(const char *cp, Word *ftype, LongWord *atype);
 int parse_extension(const char *cp, Word size, Word *ftype, LongWord *atype);
 
 int parse_mime_c(const char *cp, Word *ftype, LongWord *atype);
-int parse_mime(const char *cp, Word size, Word *ftype, LongWord *atype)
+int parse_mime(const char *cp, Word size, Word *ftype, LongWord *atype);
 
 
 #ifdef __GSOS__
@@ -39,7 +39,7 @@ enum {
     ATTR_MODTIME = 16
 };
 
-int setfileattr(const char *filename, FileInfoRecGS *info, unsigned flags)
+int setfileattr(const char *filename, FileInfoRecGS *info, unsigned flags);
 
 #endif
 

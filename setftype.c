@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <gno/gno.h>
 
+#include "prototypes.h"
+
 int setfileattr(const char *filename, FileInfoRecGS *info, unsigned flags)
 {
     Word rv;
