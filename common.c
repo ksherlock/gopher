@@ -4,6 +4,8 @@
  */
 #pragma noroot
 #pragma optimize 79
+#pragma debug 0x8000
+#pragma lint -1
 
 #include <Memory.h>
 #include <MiscTool.h>
@@ -39,6 +41,7 @@ int read_binary(Word ipid, FILE *file, ReadBlock *dcb)
     DecBusy();
     
     count = rb.rrBuffCount;
+
     if (!count)
     {
         if (rv) break;
@@ -47,6 +50,8 @@ int read_binary(Word ipid, FILE *file, ReadBlock *dcb)
         DecBusy();
         continue;
     }
+
+
 
     tcount = fwrite(buffer, 1, count, file);
     if (dcb) dcb->transferCount += tcount;
@@ -89,9 +94,11 @@ int read_binary_size(Word ipid, FILE *file, ReadBlock *dcb)
     DecBusy();
     
     count = rb.rrBuffCount;
+
+
     if (!count)
     {
-        if (rv) break;
+        if (rv) return -1;
         IncBusy();
         TCPIPPoll();
         DecBusy();
@@ -109,16 +116,15 @@ int read_binary_size(Word ipid, FILE *file, ReadBlock *dcb)
   }
  
   return 0;
-
 }
 
 
 int ConnectLoop(char *host, Word port, Connection *connection)
 {
-    LongWord qtick;
+  LongWord qtick;
 
-    ConnectionInit(connection, MMStartUp(), flags._v ? DisplayCallback : NULL);
-    ConnectionOpenC(connection, host,  port);
+  ConnectionInit(connection, MMStartUp(), flags._v ? DisplayCallback : NULL);
+  ConnectionOpenC(connection, host,  port);
 
   // 30 second timeout.
   qtick = GetTick() + 30 * 60;

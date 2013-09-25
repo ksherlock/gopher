@@ -16,7 +16,9 @@
 
 #pragma optimize 79
 #pragma noroot
- 
+#pragma debug 0x8000
+#pragma lint -1
+
 #include <TCPIP.h>
 #include <MiscTool.h>
 #include <Memory.h>
@@ -320,6 +322,7 @@ int read_response(Word ipid, FILE *file, Handle dict)
 
     int haveTime = 0;    
     
+
     contentSize = 0;
     transferEncoding = -1;
     value = DictionaryGet(dict, "Content-Length",  14, &valueSize);
@@ -465,8 +468,7 @@ int read_response(Word ipid, FILE *file, Handle dict)
         dcb.requestCount = contentSize;
         ok = read_binary_size(ipid, file, &dcb);
 
-        if (!ok) return -1;
-        if (dcb.transferCount != dcb.requestCount)
+        if (ok < 0 || dcb.transferCount != dcb.requestCount)
         {
             fprintf(stderr, "Read error - requested %ld, received %ld\n", 
               dcb.requestCount, dcb.transferCount);

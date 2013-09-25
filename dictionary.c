@@ -1,5 +1,7 @@
 #pragma optimize 79
 #pragma noroot
+#pragma debug 0x8000
+#pragma lint -1
 
 #include "dictionary.h"
 #include <memory.h>
