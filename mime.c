@@ -1,19 +1,19 @@
 #pragma optimize 79
 #pragma noroot
+#pragma debug 0x8000
 
 #include <Types.h>
+#include "prototypes.h"
 
-int parse_mime(const char *cp, Word *ftype, LongWord *atype)
+
+int parse_mime_c(const char *cp, Word *ftype, LongWord *atype)
 {
-  Word size;
-  Word *wp = (Word *)cp;
-  Word h;
   int i;
-  int semi;
   int slash;
+  int semi;
 
-  *ftype = 0;
-  *atype = 0;
+  if (!cp || !*cp)
+    return 0;
 
   /*
    * two pass
@@ -21,31 +21,43 @@ int parse_mime(const char *cp, Word *ftype, LongWord *atype)
    * 2. type
    */
 
-
-
-  if (!cp || !*cp) return 0;
-
-  // find any optional ';'
   semi = slash = -1;
   for (i = 0; ; ++i)
   {
     char c = cp[i];
-    if (c == 0) break;
-    if (c == '/') slash = i;
-    if (c == ';')
+    if (c == 0 || c == ';') break;
+
+    if (c == '/')
     {
-      semi = i;
-      break;
+      slash = i;
     }
   }
-  size = i;
 
-  for (i = 0; i < 2; ++i)
+  // try type/subtype
+  if (parse_mime(cp, i, ftype, atype));
+    return 1;
+
+
+  // try type
+  if (slash != -1)
+    return parse_mime(cp, slash, ftype, atype);
+
+  return 0;
+}
+
+int parse_mime(const char *cp, Word size, Word *ftype, LongWord *atype)
+{
+  Word *wp = (Word *)cp;
+  Word h;
+
+  if (!cp || !size) return 0;
+
+retry:
+
+  h = ((*cp | 0x20) ^ size) & 0x0f;
+
+  switch (h)
   {
-    h = ((*cp | 0x20) ^ size) & 0x0f;
-
-    switch (h)
-    {
     case 0x00:
       // text
       if (size == 4
@@ -59,6 +71,20 @@ int parse_mime(const char *cp, Word *ftype, LongWord *atype)
       break;
 
     case 0x09:
+      // text/x-pascal
+      if (size == 13
+        && (wp[0] | 0x2020) == 0x6574 // 'te'
+        && (wp[1] | 0x2020) == 0x7478 // 'xt'
+        && (wp[2] | 0x2020) == 0x782f // '/x'
+        && (wp[3] | 0x2020) == 0x702d // '-p'
+        && (wp[4] | 0x2020) == 0x7361 // 'as'
+        && (wp[5] | 0x2020) == 0x6163 // 'ca'
+        && (cp[12] | 0x20) == 0x6c     // 'l'
+      ) {
+        *ftype = 0xb0;
+        *atype = 0x0005;
+        return 1;
+      }
       // application/octet-stream
       if (size == 24
         && (wp[0] | 0x2020) == 0x7061 // 'ap'
@@ -78,20 +104,6 @@ int parse_mime(const char *cp, Word *ftype, LongWord *atype)
         *atype = 0x0000;
         return 1;
       }
-      // text/x-pascal
-      if (size == 13
-        && (wp[0] | 0x2020) == 0x6574 // 'te'
-        && (wp[1] | 0x2020) == 0x7478 // 'xt'
-        && (wp[2] | 0x2020) == 0x782f // '/x'
-        && (wp[3] | 0x2020) == 0x702d // '-p'
-        && (wp[4] | 0x2020) == 0x7361 // 'as'
-        && (wp[5] | 0x2020) == 0x6163 // 'ca'
-        && (cp[12] | 0x20) == 0x6c     // 'l'
-      ) {
-        *ftype = 0xb0;
-        *atype = 0x0005;
-        return 1;
-      }
       break;
 
     case 0x0c:
@@ -108,11 +120,15 @@ int parse_mime(const char *cp, Word *ftype, LongWord *atype)
       }
       break;
 
-    }
-
-    size = slash;
-    if (size == -1) break;
   }
+
+/*
+  // try again as type
+  while (--size)
+  {
+    if (cp[size] == '/') goto retry;
+  }
+*/
 
   return 0;
 }

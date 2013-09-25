@@ -1,13 +1,17 @@
 %%
 #pragma optimize 79
 #pragma noroot
+#pragma debug 0x8000
 
 #include <Types.h>
+#include "prototypes.h"
+
 
 int parse_mime_c(const char *cp, Word *ftype, LongWord *atype)
 {
   int i;
   int slash;
+  int semi;
 
   if (!cp || !*cp)
     return 0;
@@ -31,20 +35,19 @@ int parse_mime_c(const char *cp, Word *ftype, LongWord *atype)
   }
 
   // try type/subtype
-  if (parse_mime(cp, i, ftype, atype)) 
+  if (parse_mime(cp, i, ftype, atype));
     return 1;
 
   
   // try type
   if (slash != -1)
-    return parse_mime(cp, slash, ftype, atype));
+    return parse_mime(cp, slash, ftype, atype);
 
   return 0;
 }
 
 int parse_mime(const char *cp, Word size, Word *ftype, LongWord *atype)
 {
-  Word size;
   Word *wp = (Word *)cp;
   Word h;
 
