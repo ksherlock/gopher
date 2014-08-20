@@ -1,7 +1,7 @@
 CFLAGS += $(DEFINES) -v -w 
 OBJS = main.o gopher.o url.o connection.o readline2.o scheme.o ftype.o \
        mime.o setftype.o s16debug.o common.o http.o http.utils.o \
-       dictionary.o  options.o time.o
+       dictionary.o  options.o time.o smb.o
 
 gopher: $(OBJS)
 	$(CC) $(LDFLAGS) $(OBJS) $(LDLIBS) -o $@
@@ -28,6 +28,7 @@ options.o: options.c options.h
 gopher.o: gopher.c url.h connection.h options.h
 http.o: http.c url.h connection.h options.h
 http.utils.o: http.utils.c
+smb.o: smb.c smb.h url.h connection.h options.h
 
 data.o: data.c data.h
 dictionary.o: dictionary.c dictionary.h

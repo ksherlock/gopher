@@ -55,6 +55,7 @@ int CloseLoop(Connection *connection);
 #ifdef __url_h__
 int do_gopher(const char *url, URLComponents *components);
 int do_http(const char *url, URLComponents *components);
+int do_smb(const char *url, URLComponents *components);
 #endif
 
 #ifdef __TYPES__

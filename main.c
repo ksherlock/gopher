@@ -277,6 +277,10 @@ int main(int argc, char **argv)
     {
         do_http(url, &components);
     }
+    else if (components.schemeType == SCHEME_SMB)
+    {
+        do_smb(url, &components);
+    }
     else
     {
         fprintf(stderr, "Unsupported scheme.\n");
