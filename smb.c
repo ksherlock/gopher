@@ -26,7 +26,7 @@
 static struct smb2_header_sync header;
 
 
-Handle read_response(Word ipid)
+static Handle read_response(Word ipid)
 {
   static srBuff sr;
   static rrBuff rb;
