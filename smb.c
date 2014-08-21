@@ -23,8 +23,50 @@
 #include "prototypes.h"
 #include "smb.h"
 
+
 static struct smb2_header_sync header;
 
+
+static void dump_header(const smb2_header_sync *header)
+{
+  fprintf(stderr, "   protocol_id: %08lx\n", header->protocol_id);
+  fprintf(stderr, "structure_size: %04x\n", header->structure_size);
+  fprintf(stderr, " credit_charge: %04x\n", header->credit_charge);
+  fprintf(stderr, "        status: %08lx\n", header->status);
+  fprintf(stderr, "       command: %04x\n", header->command);
+  fprintf(stderr, "        credit: %04x\n", header->credit);
+  fprintf(stderr, "         flags: %08lx\n", header->flags);
+  fprintf(stderr, "  next_command: %08lx\n", header->next_command);
+  fprintf(stderr, "    message_id: %08lx%08lx\n", header->message_id[1], header->message_id[0]);
+  fprintf(stderr, "      reserved: %08lx\n", header->reserved);
+  fprintf(stderr, "       tree_id: %08lx\n", header->tree_id);
+  fprintf(stderr, "    session_id: %08lx%08lx\n", header->session_id[1], header->session_id[0]);
+  fprintf(stderr, "     signature:\n");
+  hexdump(header->signature, 16);
+
+}
+
+static void write_message(Word ipid, const void *data1, unsigned size1, const void *data2, unsigned size2)
+{
+  uint8_t nbthead[4];
+  uint32_t size;
+
+  size = sizeof(header) + size1 + size2;
+
+  // http://support.microsoft.com/kb/204279
+  nbthead[0] = 0;
+  nbthead[1] = size >> 16;
+  nbthead[2] = size >> 8;
+  nbthead[3] = size;
+
+  if (++header.message_id[0] == 0)
+    ++header.message_id[1];
+
+  TCPIPWriteTCP(ipid, (dataPtr)nbthead, sizeof(nbthead), false, false);
+  TCPIPWriteTCP(ipid, (dataPtr)header, sizeof(header), false, false);
+  TCPIPWriteTCP(ipid, (dataPtr)data1, size1, false, false);
+  TCPIPWriteTCP(ipid, (dataPtr)data2, size2, true, false);
+}
 
 static Handle read_response(Word ipid)
 {
@@ -66,7 +108,10 @@ static Handle read_response(Word ipid)
 
   terr = TCPIPReadTCP(ipid, 0, (Ref)&nbthead, 4, &rb);
 
-  if (nbthead[0] != 0) return (Handle)0;
+  if (nbthead[0] != 0) {
+    fprintf(stderr, "Bad NBT Header\n");
+    return (Handle)0;
+  }
   size = nbthead[3];
   size |= nbthead[2] << 8; 
   size |= nbthead[1] << 16; 
@@ -96,9 +141,16 @@ static Handle read_response(Word ipid)
 
 int negotiate(Word ipid)
 {
-  static struct smb2_negotiate_request req;
+  static struct smb2_negotiate_request negotiate_req;
+  static struct smb2_session_setup_request setup_req;
 
   static uint16_t dialects[] = { 0x0202 };
+
+  smb2_header_sync *headerPtr;
+  void *responsePtr;
+
+
+  Handle h;
 
   uint8_t nbthead[4];
   uint32_t size = 0;
@@ -106,35 +158,105 @@ int negotiate(Word ipid)
 
 
   memset(&header, 0, sizeof(header));
-  memset(&req, 0, sizeof(req));
+  memset(&negotiate_req, 0, sizeof(negotiate_req));
+  memset(&setup_req, 0, sizeof(setup_req));
 
 
   header.protocol_id = SMB2_MAGIC; // '\xfeSMB';
   header.structure_size = 64;
   header.command = SMB2_NEGOTIATE;
 
-  req.structure_size = 36;
-  req.dialect_count = 1; // ?
-  req.security_mode = SMB2_NEGOTIATE_SIGNING_ENABLED;
-  req.capabilities = 0;
+  negotiate_req.structure_size = 36;
+  negotiate_req.dialect_count = 1; // ?
+  negotiate_req.security_mode = SMB2_NEGOTIATE_SIGNING_ENABLED;
+  negotiate_req.capabilities = 0;
 
-  //req.dialects[0] = 0x202; // smb 2.002
+  //negotiate_req.dialects[0] = 0x202; // smb 2.002
 
 
+#if 0
   // http://support.microsoft.com/kb/204279
-  size = sizeof(header) + sizeof(req) + sizeof(dialects);
+  size = sizeof(header) + sizeof(negotiate_req) + sizeof(dialects);
   nbthead[0] = 0;
   nbthead[1] = size >> 16;
   nbthead[2] = size >> 8;
   nbthead[3] = size;
 
+  next_message();
   TCPIPWriteTCP(ipid, (dataPtr)nbthead, sizeof(nbthead), false, false);
   TCPIPWriteTCP(ipid, (dataPtr)&header, sizeof(header), false, false);
-  TCPIPWriteTCP(ipid, (dataPtr)&req, sizeof(req), false, false);
+  TCPIPWriteTCP(ipid, (dataPtr)&negotiate_req, sizeof(negotiate_req), false, false);
   TCPIPWriteTCP(ipid, (dataPtr)&dialects, sizeof(dialects), true, false);
   // push.
+#endif
+
+  write_message(ipid, &negotiate_req, sizeof(negotiate_req), dialects, sizeof(dialects));
 
   // read a response...
+
+  h = read_response(ipid);
+  if (!h) return -1;
+  HLock(h);
+
+  hexdump(*h, GetHandleSize(h));
+
+  headerPtr = *(smb2_header_sync **)h;
+  responsePtr = (uint8_t *)headerPtr + sizeof(smb2_header_sync);
+
+  dump_header(headerPtr);
+
+  if (headerPtr->protocol_id != SMB2_MAGIC || headerPtr->structure_size != 64)
+  {
+    DisposeHandle(h);
+    fprintf(stderr, "Invalid SMB2 header\n");
+    return -1;
+  }
+
+  if (headerPtr->command != SMB2_NEGOTIATE)
+  {
+    DisposeHandle(h);
+    fprintf(stderr, "Unexpected SMB2 command\n");
+    return -1;
+  }
+  DisposeHandle(h);
+
+  // 
+  header.command = SMB2_SESSION_SETUP;
+
+  setup_req.structure_size = 25;
+  setup_req.flags = 0;
+  setup_req.security_mode = SMB2_NEGOTIATE_SIGNING_ENABLED;
+  setup_req.capabilities = 0;
+
+
+  write_message(ipid, &setup_req, sizeof(setup_req), NULL, 0);
+
+
+  h = read_response(ipid);
+  if (!h) return -1;
+  HLock(h);
+
+  hexdump(*h, GetHandleSize(h));
+
+  headerPtr = *(smb2_header_sync **)h;
+  responsePtr = (uint8_t *)headerPtr + sizeof(smb2_header_sync);
+
+  dump_header(headerPtr);
+
+  if (headerPtr->protocol_id != SMB2_MAGIC || headerPtr->structure_size != 64)
+  {
+    DisposeHandle(h);
+    fprintf(stderr, "Invalid SMB2 header\n");
+    return -1;
+  }
+
+  if (headerPtr->command != SMB2_SESSION_SETUP)
+  {
+    DisposeHandle(h);
+    fprintf(stderr, "Unexpected SMB2 command\n");
+    return -1;
+  }
+  DisposeHandle(h);
 
   return 0;
 }
@@ -174,25 +296,6 @@ int do_smb(char *url, URLComponents *components)
   if (ok) return ok;
 
 
-  qtick = GetTick() + 30 * 60;
-  for(;;)
-  {
-    static srBuff sr;
-
-    TCPIPPoll();
-
-    terr = TCPIPStatusTCP(connection.ipid, &sr);
-
-    if (sr.srRcvQueued > 0) break;
-
-
-    if (GetTick() >= qtick)
-    {
-      fprintf(stderr, "Read timed out.\n");
-      return -1;
-    }
-
-  }
 
   CloseLoop(&connection);
 
