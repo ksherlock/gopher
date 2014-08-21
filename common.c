@@ -13,6 +13,8 @@
 
 
 #include <stdio.h>
+#include <string.h>
+#include <ctype.h>
 
 #include "options.h"
 #include "prototypes.h"
@@ -162,4 +164,52 @@ int CloseLoop(Connection *connection)
     while (!ConnectionPoll(connection)) ; // wait for it to close.
       
     return 1;
+}
+
+
+void hexdump(const unsigned char *data, int size)
+{
+    const char *HexMap = "0123456789abcdef";
+
+    static char buffer1[16 * 3 + 1 + 1];
+    static char buffer2[16 + 1];
+
+    Word offset = 0;
+    unsigned i, j;
+    
+    
+    while(size > 0)
+    {
+        unsigned linelen = 16;
+
+        memset(buffer1, ' ', sizeof(buffer1));
+        memset(buffer2, ' ', sizeof(buffer2));
+        
+        if (size < linelen) linelen = size;
+        
+        
+        for (i = 0, j = 0; i < linelen; i++)
+        {
+            unsigned x = data[i];
+            buffer1[j++] = HexMap[x >> 4];
+            buffer1[j++] = HexMap[x & 0x0f];
+            j++;
+            if (i == 7) j++;
+            
+            buffer2[i] = isprint(x) ? x : '.';
+            
+        }
+        
+        buffer1[sizeof(buffer1)-1] = 0;
+        buffer2[sizeof(buffer2)-1] = 0;
+        
+    
+        printf("%04x:\t%s\t%s\n", offset, buffer1, buffer2);
+
+        offset += 16;
+        data += 16;
+        size -= 16;
+    }
+
+    printf("\n");
 }

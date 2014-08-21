@@ -16,6 +16,9 @@
 
 pascal void DisplayCallback(const char *message);
 
+void hexdump(const unsigned char *data, int size);
+
+
 
 typedef struct ReadBlock
 {
