@@ -125,6 +125,7 @@ typedef struct smb2_negotiate_response {
   uint32_t max_transact_size;
   uint32_t max_read_size;
   uint32_t max_write_size;
+  uint32_t system_time[2];
   uint32_t server_start_time[2];
   uint16_t security_buffer_offset;
   uint16_t security_buffer_length;
