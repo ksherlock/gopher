@@ -29,22 +29,65 @@ static struct smb2_header_sync header;
 
 static void dump_header(const smb2_header_sync *header)
 {
-  fprintf(stderr, "   protocol_id: %08lx\n", header->protocol_id);
-  fprintf(stderr, "structure_size: %04x\n", header->structure_size);
-  fprintf(stderr, " credit_charge: %04x\n", header->credit_charge);
-  fprintf(stderr, "        status: %08lx\n", header->status);
-  fprintf(stderr, "       command: %04x\n", header->command);
-  fprintf(stderr, "        credit: %04x\n", header->credit);
-  fprintf(stderr, "         flags: %08lx\n", header->flags);
-  fprintf(stderr, "  next_command: %08lx\n", header->next_command);
-  fprintf(stderr, "    message_id: %08lx%08lx\n", header->message_id[1], header->message_id[0]);
-  fprintf(stderr, "      reserved: %08lx\n", header->reserved);
-  fprintf(stderr, "       tree_id: %08lx\n", header->tree_id);
-  fprintf(stderr, "    session_id: %08lx%08lx\n", header->session_id[1], header->session_id[0]);
-  fprintf(stderr, "     signature:\n");
+  fprintf(stdout, "   protocol_id: %08lx\n", header->protocol_id);
+  fprintf(stdout, "structure_size: %04x\n", header->structure_size);
+  fprintf(stdout, " credit_charge: %04x\n", header->credit_charge);
+  fprintf(stdout, "        status: %08lx\n", header->status);
+  fprintf(stdout, "       command: %04x\n", header->command);
+  fprintf(stdout, "        credit: %04x\n", header->credit);
+  fprintf(stdout, "         flags: %08lx\n", header->flags);
+  fprintf(stdout, "  next_command: %08lx\n", header->next_command);
+  fprintf(stdout, "    message_id: %08lx%08lx\n", header->message_id[1], header->message_id[0]);
+  fprintf(stdout, "      reserved: %08lx\n", header->reserved);
+  fprintf(stdout, "       tree_id: %08lx\n", header->tree_id);
+  fprintf(stdout, "    session_id: %08lx%08lx\n", header->session_id[1], header->session_id[0]);
+
+  fprintf(stdout, "     signature:\n");
   hexdump(header->signature, 16);
 
 }
+
+
+static void dump_error(const smb2_error_response *msg)
+{
+  fprintf(stdout, "structure_size: %04x\n", msg->structure_size);
+  fprintf(stdout, "      reserved: %04x\n", msg->reserved);
+  fprintf(stdout, "     bytecount: %08lx\n", msg->bytecount);
+
+  fprintf(stdout, "   error_data:\n");
+  hexdump((const char *)msg + sizeof(smb2_error_response) , msg->bytecount);
+}
+
+
+static void dump_negotiate(const smb2_negotiate_response *msg)
+{
+  fprintf(stdout, "        structure_size: %04x\n", msg->structure_size);
+  fprintf(stdout, "         security_mode: %04x\n", msg->security_mode);
+  fprintf(stdout, "      dialect_revision: %04x\n", msg->dialect_revision);
+  fprintf(stdout, "              reserved: %04x\n", msg->reserved);
+  fprintf(stdout, "           server_guid:\n");
+  hexdump(msg->server_guid, 16);
+
+  fprintf(stdout, "          capabilities: %08lx\n", msg->capabilities);
+  fprintf(stdout, "     max_transact_size: %08lx\n", msg->max_transact_size);
+  fprintf(stdout, "         max_read_size: %08lx\n", msg->max_read_size);
+  fprintf(stdout, "        max_write_size: %08lx\n", msg->max_write_size);
+
+  fprintf(stdout, "           system_time: %08lx%08lx\n", 
+    msg->system_time[1], msg->system_time[0]);
+
+  fprintf(stdout, "     server_start_time: %08lx%08lx\n", 
+    msg->server_start_time[1], msg->server_start_time[0]);
+
+  fprintf(stdout, "security_buffer_offset: %04x\n", msg->security_buffer_offset);
+  fprintf(stdout, "security_buffer_length: %04x\n", msg->security_buffer_length);
+  fprintf(stdout, "             reserved2: %08lx\n", msg->reserved2);
+
+  fprintf(stdout, "                buffer:\n");
+  hexdump((const char *)msg - sizeof(smb2_header_sync) + msg->security_buffer_offset, 
+    msg->security_buffer_length);
+}
+
 
 static void write_message(Word ipid, const void *data1, unsigned size1, const void *data2, unsigned size2)
 {
@@ -198,7 +241,7 @@ int negotiate(Word ipid)
   if (!h) return -1;
   HLock(h);
 
-  hexdump(*h, GetHandleSize(h));
+  //hexdump(*h, GetHandleSize(h));
 
   headerPtr = *(smb2_header_sync **)h;
   responsePtr = (uint8_t *)headerPtr + sizeof(smb2_header_sync);
@@ -218,7 +261,11 @@ int negotiate(Word ipid)
     fprintf(stderr, "Unexpected SMB2 command\n");
     return -1;
   }
+
+  dump_negotiate((smb2_negotiate_response *)responsePtr);
+
   DisposeHandle(h);
+
 
   // 
   header.command = SMB2_SESSION_SETUP;
