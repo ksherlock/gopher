@@ -145,7 +145,7 @@ typedef struct smb2_session_setup_request {
   uint32_t previous_session_id[2];
   //uint8t_t buffer[1]; // variable
 
-} smb2_sessions_setup_request;
+} smb2_session_setup_request;
 
 
 typedef struct smb2_session_setup_response {
