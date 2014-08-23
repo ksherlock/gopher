@@ -22,7 +22,7 @@
 
 #include "prototypes.h"
 #include "smb.h"
-
+#include "smb.errors.h"
 
 static struct smb2_header_sync header;
 static void *security_buffer = 0;
@@ -42,6 +42,37 @@ typedef struct smb_response {
 } smb_response;
 
 
+// 3.3.4.4 Sending an Error Response
+// http://msdn.microsoft.com/en-us/library/cc246722.aspx
+static int is_error(const smb_response *msg)
+{
+  uint32_t status = msg->header.status;
+  uint16_t command = msg->header.command;
+
+  if (status == 0) return false;
+
+  switch (command)
+  {
+    case SMB2_SESSION_SETUP:
+    if (status == STATUS_MORE_PROCESSING_REQUIRED)
+      return false;
+    break;
+
+  case SMB2_QUERY_INFO:
+  case SMB2_READ:
+    if (status == STATUS_BUFFER_OVERFLOW)
+      return false;
+    break;
+
+  case SMB2_CHANGE_NOTIFY:
+    if (status == STATUS_NOTIFY_ENUM_DIR)
+      return false;
+    break;
+
+  }
+
+  return true;
+}
 
 static void dump_header(const smb2_header_sync *header)
 {
@@ -104,22 +135,57 @@ static void dump_negotiate(const smb2_negotiate_response *msg)
     msg->security_buffer_length);
 }
 
+static void dump_setup(const smb2_session_setup_response *msg)
+{
+  fprintf(stdout, "        structure_size: %04x\n", msg->structure_size);
+  fprintf(stdout, "         session_flags: %04x\n", msg->session_flags);
+  fprintf(stdout, "security_buffer_offset: %04x\n", msg->security_buffer_offset);
+  fprintf(stdout, "security_buffer_length: %04x\n", msg->security_buffer_length);
+
+  fprintf(stdout, "                buffer:\n");
+  hexdump((const char *)msg - sizeof(smb2_header_sync) + msg->security_buffer_offset, 
+    msg->security_buffer_length);
+}
+
+
+static void dump_error(const smb2_error_response *msg)
+{
+  fprintf(stdout, "        structure_size: %04x\n", msg->structure_size);
+  fprintf(stdout, "              reserved: %04x\n", msg->reserved);
+  fprintf(stdout, "             bytecount: %08lx\n", msg->bytecount);
+
+  fprintf(stdout, "           error_data:\n");
+  hexdump((const char *)msg + sizeof(smb2_error_response), msg->bytecount);
+}
+
 static void dump_response(const smb_response *msg)
 {
   if (!msg) return;
   dump_header(&msg->header);
+
+  if (is_error(msg))
+  {
+    dump_error(&msg->body.error);
+    return;
+  }
+
   switch (msg->header.command)
   {
     case SMB2_NEGOTIATE:
       dump_negotiate(&msg->body.negotiate);
       break;
+
     case SMB2_SESSION_SETUP:
+      dump_setup(&msg->body.setup);
       break;
+
     default:
       break;
 
   } 
 }
+
+
 
 static void write_message(Word ipid, const void *data1, unsigned size1, const void *data2, unsigned size2)
 {
@@ -312,8 +378,6 @@ int negotiate(Word ipid)
   h = read_response(ipid);
   if (!h) return -1;
   HLock(h);
-
-  hexdump(*h, GetHandleSize(h));
 
   responsePtr = *(smb_response **)h;
 
