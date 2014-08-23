@@ -76,6 +76,40 @@ enum {
   SMB2_SESSION_FLAG_ENCRYPT_DATA = 0x0004
 };
 
+// tree connect flags
+enum {
+  SMB2_SHARE_TYPE_DISK = 0x01,
+  SMB2_SHARE_TYPE_PIPE = 0x02,
+  SMB2_SHARE_TYPE_PRINT = 0x03
+};
+
+// tree connect share flags.
+enum {
+  SMB2_SHAREFLAG_MANUAL_CACHING = 0x0000,
+  SMB2_SHAREFLAG_AUTO_CACHING = 0x0010,
+  SMB2_SHAREFLAG_VDO_CACHING = 0x0020,
+  SMB2_SHAREFLAG_NO_CACHING = 0x0030,
+  SMB2_SHAREFLAG_DFS = 0x0001,
+  SMB2_SHAREFLAG_DFS_ROOT = 0x0002,
+  SMB2_SHAREFLAG_RESTRICT_EXCLUSIVE_OPENS = 0x0100,
+  SMB2_SHAREFLAG_FORCE_SHARED_DELETE = 0x0200,
+  SMB2_SHAREFLAG_ALLOW_NAMESPACE_CACHING = 0x0400,
+  SMB2_SHAREFLAG_ACCESS_BASED_DIRECTORY_ENUM = 0x0800,
+  SMB2_SHAREFLAG_FORCE_LEVELII_OPLOCK = 0x1000,
+  SMB2_SHAREFLAG_ENABLE_HASH_V1 = 0x2000,
+  SMB2_SHAREFLAG_ENABLE_HASH_V2 = 0x4000,
+  SMB2_SHAREFLAG_ENCRYPT_DATA = 0x8000
+};
+
+// tree connect capabilities
+enum {
+  SMB2_SHARE_CAP_DFS = 0x0008,
+  SMB2_SHARE_CAP_CONTINUOUS_AVAILABILITY = 0x0010,
+  SMB2_SHARE_CAP_SCALEOUT = 0x0020,
+  SMB2_SHARE_CAP_CLUSTER = 0x0040,
+  SMB2_SHARE_CAP_ASYMMETRIC = 0x0080
+};
+
 typedef struct smb2_header_sync {
 
   uint32_t protocol_id;
@@ -93,6 +127,24 @@ typedef struct smb2_header_sync {
   uint8_t signature[16];
 
 } smb2_header_sync;
+
+typedef struct smb2_header_async {
+
+  uint32_t protocol_id;
+  uint16_t structure_size;
+  uint16_t credit_charge;
+  uint32_t status;
+  uint16_t command;
+  uint16_t credit; // _request / _response
+  uint32_t flags;
+  uint32_t next_command;
+  uint32_t message_id[2]; // uint64_t
+  uint32_t async_id[2];
+  uint32_t session_id[2]; // uint64_t
+  uint8_t signature[16];
+
+} smb2_header_async;
+
 
 typedef struct smb2_error_response {
   uint16_t structure_size;
@@ -155,6 +207,35 @@ typedef struct smb2_session_setup_response {
   uint16_t security_buffer_length;
   //uint8t_t buffer[1]; // variable
 } smb2_session_setup_response;
+
+
+typedef struct smb2_tree_connect_request {
+  uint16_t structure_size;
+  uint16_t reserved;
+  uint16_t path_offset;
+  uint16_t path_length;
+  // uint8_t buffer[0];
+} smb2_tree_connect_request;
+
+typedef struct smb2_tree_connect_response {
+  uint16_t structure_size;
+  uint8_t share_type;
+  uint8_t reserved;
+  uint32_t share_flags;
+  uint32_t capabilities;
+  uint32_t maximal_access;
+} smb2_tree_connect_response;
+
+
+typedef struct smb2_tree_disconnect_request {
+  uint16_t structure_size;
+  uint16_t reserved;
+} smb2_tree_disconnect_request;
+
+typedef struct smb2_tree_disconnect_response {
+  uint16_t structure_size;
+  uint16_t reserved;
+} smb2_tree_disconnect_response;
 
 typedef struct smb2_logoff_request {
   uint16_t structure_size;
