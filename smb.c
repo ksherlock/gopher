@@ -36,6 +36,7 @@ typedef struct smb_response {
     smb2_error_response error;
     smb2_negotiate_response negotiate;
     smb2_session_setup_response setup;
+    smb2_tree_connect_response tree_connect;
     smb2_logoff_response logoff;
   } body;
 
@@ -148,6 +149,16 @@ static void dump_setup(const smb2_session_setup_response *msg)
 }
 
 
+static void dump_tree_connect(const smb2_tree_connect_response *msg)
+{
+  fprintf(stdout, "        structure_size: %04x\n", msg->structure_size);
+  fprintf(stdout, "            share_type: %02x\n", msg->share_type);
+  fprintf(stdout, "              reserved: %02x\n", msg->reserved);
+  fprintf(stdout, "           share_flags: %08lx\n", msg->share_flags);
+  fprintf(stdout, "          capabilities: %08lx\n", msg->capabilities);
+  fprintf(stdout, "        maximal_access: %08lx\n", msg->maximal_access);
+}
+
 static void dump_error(const smb2_error_response *msg)
 {
   fprintf(stdout, "        structure_size: %04x\n", msg->structure_size);
@@ -177,6 +188,10 @@ static void dump_response(const smb_response *msg)
 
     case SMB2_SESSION_SETUP:
       dump_setup(&msg->body.setup);
+      break;
+
+    case SMB2_TREE_CONNECT:
+      dump_tree_connect(&msg->body.tree_connect);
       break;
 
     default:
@@ -280,12 +295,72 @@ static Handle read_response(Word ipid)
 
 }
 
-int negotiate(Word ipid)
+
+static uint16_t *cstring_to_unicode(const char *str)
+{
+  unsigned length = strlen(str);
+  uint16_t *path;
+  unsigned i;
+
+  path = (uint16_t *)malloc(length * 2 + 4);
+
+  for (i = 0; i < length; ++i)
+  {
+    path[i + 1] = str[i];
+  }
+  path[0] = length;
+  path[length + 1] = 0;
+
+  return path;
+}
+
+
+static uint16_t *pstring_to_unicode(const char *str)
+{
+  unsigned length = str[0];
+  uint16_t *path;
+  unsigned i;
+
+  path = (uint16_t *)malloc(length * 2 + 4);
+
+  for (i = 0; i < length; ++i)
+  {
+    path[i + 1] = str[i + 1];
+  }
+  path[0] = length;
+  path[length + 1] = 0;
+
+  return path;
+}
+
+
+static uint16_t *gsstring_to_unicode(const GSString255 *str)
+{
+  unsigned length = str->length;
+  uint16_t *path;
+  unsigned i;
+
+  path = (uint16_t *)malloc(length * 2 + 4);
+
+  for (i = 0; i < length; ++i)
+  {
+    path[i + 1] = str->text[i];
+  }
+  path[0] = length;
+  path[length + 1] = 0;
+
+  return path;
+}
+
+int negotiate(Word ipid, uint16_t *path)
 {
   static struct smb2_negotiate_request negotiate_req;
   static struct smb2_session_setup_request setup_req;
+  static struct smb2_tree_connect_request tree_req;
 
   static uint16_t dialects[] = { 0x0202 };
+
+
 
 
   smb_response *responsePtr;
@@ -300,6 +375,7 @@ int negotiate(Word ipid)
   memset(&header, 0, sizeof(header));
   memset(&negotiate_req, 0, sizeof(negotiate_req));
   memset(&setup_req, 0, sizeof(setup_req));
+  memset(&tree_req, 0, sizeof(tree_req));
 
 
   header.protocol_id = SMB2_MAGIC; // '\xfeSMB';
@@ -396,7 +472,45 @@ int negotiate(Word ipid)
     fprintf(stderr, "Unexpected SMB2 command\n");
     return -1;
   }
+
+  header.session_id[0] = responsePtr->header.session_id[0];
+  header.session_id[1] = responsePtr->header.session_id[1];
+
   DisposeHandle(h);
+
+
+  header.command = SMB2_TREE_CONNECT;
+
+  tree_req.structure_size = 9;
+  tree_req.path_offset = sizeof(smb2_header_sync) + sizeof(smb2_tree_connect_request);
+  tree_req.path_length = path[0] * 2;
+
+  write_message(ipid, &tree_req, sizeof(tree_req), path + 1, path[0] * 2);
+
+
+  h = read_response(ipid);
+  if (!h) return -1;
+  HLock(h);
+
+  responsePtr = *(smb_response **)h;
+
+  dump_response(responsePtr);
+
+  if (responsePtr->header.protocol_id != SMB2_MAGIC || responsePtr->header.structure_size != 64)
+  {
+    DisposeHandle(h);
+    fprintf(stderr, "Invalid SMB2 header\n");
+    return -1;
+  }
+
+  if (responsePtr->header.command != SMB2_TREE_CONNECT)
+  {
+    DisposeHandle(h);
+    fprintf(stderr, "Unexpected SMB2 command\n");
+    return -1;
+  }
+  DisposeHandle(h);
+
 
   return 0;
 }
@@ -408,6 +522,7 @@ int do_smb(char *url, URLComponents *components)
   LongWord qtick;
 
   char *host;
+  uint16_t *path;
   Word err;
   Word terr;
   Word ok;
@@ -432,7 +547,9 @@ int do_smb(char *url, URLComponents *components)
     return -1;
   }
 
-  ok = negotiate(connection.ipid);
+
+  path = cstring_to_unicode("\\\\192.168.1.254\\mnt");
+  ok = negotiate(connection.ipid, path);
   if (ok) return ok;
 
 
