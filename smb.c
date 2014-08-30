@@ -25,8 +25,6 @@
 #include "smb.errors.h"
 
 static struct smb2_header_sync header;
-static void *security_buffer = 0;
-static unsigned security_buffer_length = 0;
 
 
 typedef struct smb_response {
@@ -352,6 +350,83 @@ static uint16_t *gsstring_to_unicode(const GSString255 *str)
   return path;
 }
 
+
+unsigned has_spnego = 0;
+unsigned has_mech_ntlmssp = 0;
+
+// returns the new offset.
+unsigned scan_asn1(const uint8_t *data, unsigned offset, unsigned length)
+{
+  // '1.3.6.1.5.5.2'
+  static uint8_t kSPNEGO[] = {0x2B, 0x06, 0x01, 0x05, 0x05, 0x02}; 
+
+  // '1.3.6.1.4.1.311.2.2.10'
+  static uint8_t kNTLMSSP[] = {0x2B, 0x06, 0x01, 0x04, 0x01, 0x82, 0x37, 0x02, 0x02, 0x0A}; 
+  unsigned tag;
+  unsigned len;
+
+restart:
+
+  tag = data[offset++];
+  len = data[offset++];
+
+  if (offset >= length) return offset;
+
+  if (len >= 0x80) {
+    switch (len & 0x7f)
+    {
+      case 1:
+        len = data[offset++];
+        break;
+      case 2:
+        len = data[offset++] << 8;
+        len += data[offset++];
+        break;
+
+      default:
+        // oops, too big.
+        return length;
+    }
+  }
+
+  //fprintf(stdout, "%02x %02x\n", tag, len);
+
+  switch(tag)
+  {
+  case 0x30: // sequence
+  case 0x60: // application
+    while (offset < length)
+      offset = scan_asn1(data, offset, length);
+    break;
+
+  case 0xa0:
+  case 0xa1:
+  case 0xa2:
+  case 0xa3:
+    // jump back to the start?
+    //return scan_asn1(data, offset, length);
+    goto restart;
+    break;
+
+  case 0x06: // oid
+    if (len == 6 && memcmp(data + offset, kSPNEGO, 6) == 0)
+    {
+      //fprintf(stdout, "spnego!\n");
+      has_spnego = true;
+      break;
+    }
+    if (len == 0x0a && memcmp(data + offset, kNTLMSSP, 0x0a) == 0)
+    {
+      //fprintf(stdout, "ntlmssp!\n");
+      has_mech_ntlmssp = true;
+      break;
+    }
+    break;
+  }
+
+  return offset + len;
+}
+
 int negotiate(Word ipid, uint16_t *path)
 {
   static struct smb2_negotiate_request negotiate_req;
@@ -360,6 +435,7 @@ int negotiate(Word ipid, uint16_t *path)
 
   static uint16_t dialects[] = { 0x0202 };
 
+  uint16_t tmp;
 
 
 
@@ -418,25 +494,32 @@ int negotiate(Word ipid, uint16_t *path)
     return -1;
   }
 
-  security_buffer_length = responsePtr->body.negotiate.security_buffer_length;
-  if (security_buffer_length)
+  // the security buffer is asn.1.  This checks for spnego/ntlmssp.
+  // probably not necessary... what else are we going to do?
+
+
+  has_spnego = false;
+  has_mech_ntlmssp = false;
+
+  tmp = responsePtr->body.negotiate.security_buffer_length;
+  if (tmp)
   {
-    security_buffer = malloc(security_buffer_length);
-    if (!security_buffer)
+
+    scan_asn1((const char *)responsePtr + responsePtr->body.negotiate.security_buffer_offset,
+      0, tmp);
+
+    if (flags._v)
     {
-      DisposeHandle(h);
-      fprintf(stderr, "malloc error\n");
-      return -1;   
+      fprintf(stdout, "has_spnego: %d\n", has_spnego);
+      fprintf(stdout, "has_mech_ntlmssp: %d\n", has_mech_ntlmssp);
     }
 
-    memcpy(security_buffer, 
-      (const char *)responsePtr + responsePtr->body.negotiate.security_buffer_offset,
-      security_buffer_length
-    );
   }
 
   DisposeHandle(h);
 
+
+  // 
 
   // 
   header.command = SMB2_SESSION_SETUP;
@@ -445,10 +528,10 @@ int negotiate(Word ipid, uint16_t *path)
   setup_req.flags = 0;
   setup_req.security_mode = SMB2_NEGOTIATE_SIGNING_ENABLED;
   setup_req.capabilities = 0;
-  setup_req.security_buffer_length = security_buffer_length;
+  setup_req.security_buffer_length = 0;
   setup_req.security_buffer_offset = sizeof(smb2_header_sync) + sizeof(smb2_session_setup_request);
 
-  write_message(ipid, &setup_req, sizeof(setup_req), security_buffer, security_buffer_length);
+  write_message(ipid, &setup_req, sizeof(setup_req), NULL, 0);
 
 
   h = read_response(ipid);
@@ -477,6 +560,9 @@ int negotiate(Word ipid, uint16_t *path)
   header.session_id[1] = responsePtr->header.session_id[1];
 
   DisposeHandle(h);
+
+
+  // send a second session_setup if STATUS_MORE_PROCESSING_REQUIRED
 
 
   header.command = SMB2_TREE_CONNECT;
@@ -548,7 +634,7 @@ int do_smb(char *url, URLComponents *components)
   }
 
 
-  path = cstring_to_unicode("\\\\192.168.1.254\\mnt");
+  path = cstring_to_unicode("\\\\192.168.1.254\\public");
   ok = negotiate(connection.ipid, path);
   if (ok) return ok;
 
