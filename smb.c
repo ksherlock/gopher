@@ -23,6 +23,7 @@
 #include "prototypes.h"
 #include "smb.h"
 #include "smb.errors.h"
+#include "asn1.h"
 
 static struct smb2_header_sync header;
 
@@ -393,22 +394,22 @@ restart:
 
   switch(tag)
   {
-  case 0x30: // sequence
-  case 0x60: // application
+  case ASN1_SEQUENCE: // sequence
+  case ASN1_APPLICATION: // application
     while (offset < length)
       offset = scan_asn1(data, offset, length);
     break;
 
-  case 0xa0:
-  case 0xa1:
-  case 0xa2:
-  case 0xa3:
+  case ASN1_CONTEXT:
+  case ASN1_CONTEXT+1:
+  case ASN1_CONTEXT+2:
+  case ASN1_CONTEXT+3:
     // jump back to the start?
     //return scan_asn1(data, offset, length);
     goto restart;
     break;
 
-  case 0x06: // oid
+  case ASN1_OID: // oid
     if (len == 6 && memcmp(data + offset, kSPNEGO, 6) == 0)
     {
       //fprintf(stdout, "spnego!\n");
