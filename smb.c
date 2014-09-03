@@ -355,6 +355,9 @@ static uint16_t *gsstring_to_unicode(const GSString255 *str)
 unsigned has_spnego = 0;
 unsigned has_mech_ntlmssp = 0;
 
+uint32_t ntlmssp_challenge[2] = { 0, 0 };
+uint32_t ntlmssp_flags = 0;
+
 // returns the new offset.
 unsigned scan_asn1(const uint8_t *data, unsigned offset, unsigned length)
 {
@@ -363,6 +366,11 @@ unsigned scan_asn1(const uint8_t *data, unsigned offset, unsigned length)
 
   // '1.3.6.1.4.1.311.2.2.10'
   static uint8_t kNTLMSSP[] = {0x2B, 0x06, 0x01, 0x04, 0x01, 0x82, 0x37, 0x02, 0x02, 0x0A}; 
+
+  static uint8_t kType2[] = {
+    'N', 'T', 'L', 'M', 'S', 'S', 'P', 0,
+    0x02, 0x00, 0x00, 0x00
+  };
   unsigned tag;
   unsigned len;
 
@@ -390,7 +398,7 @@ restart:
     }
   }
 
-  //fprintf(stdout, "%02x %02x\n", tag, len);
+  fprintf(stdout, "%02x %02x\n", tag, len);
 
   switch(tag)
   {
@@ -423,6 +431,18 @@ restart:
       break;
     }
     break;
+
+  case ASN1_OCTECT_STRING:
+    // get the challenge bytes.
+    if (len >= 32 && memcmp(data + offset, kType2, sizeof(kType2)) == 0)
+    {
+      ntlmssp_flags = *(uint32_t *)(data  + offset + 20);
+      ntlmssp_challenge[0] = *(uint32_t *)(data  + offset + 24);
+      ntlmssp_challenge[1] = *(uint32_t *)(data  + offset + 28);
+      // domain, server name, etc skipped for now.
+    }
+    break;
+
   }
 
   return offset + len;
@@ -435,6 +455,25 @@ int negotiate(Word ipid, uint16_t *path)
   static struct smb2_tree_connect_request tree_req;
 
   static uint16_t dialects[] = { 0x0202 };
+
+  #define DATA_SIZE 16
+  static uint8_t setup1[] = {
+    ASN1_APPLICATION, DATA_SIZE + 32, // size,
+    ASN1_OID, 0x06, 0x2B, 0x06, 0x01, 0x05, 0x05, 0x02, // spnego
+    ASN1_CONTEXT, DATA_SIZE + 22, // size
+    ASN1_SEQUENCE, DATA_SIZE + 20, //size
+    ASN1_CONTEXT, 0x0e, // size
+    ASN1_SEQUENCE, 0x0c, //size
+    ASN1_OID, 0x0a,
+    0x2B, 0x06, 0x01, 0x04, 0x01, 0x82, 0x37, 0x02, 0x02, 0x0A, // ntlmssp
+    ASN1_CONTEXT + 2, DATA_SIZE + 2, // size
+    ASN1_OCTECT_STRING, DATA_SIZE, // size
+    // data...
+    'N', 'T', 'L', 'M', 'S', 'S', 'P', 0x00,
+    0x01, 0x00, 0x00, 0x00, // uint32_t - 0x01 negotiate
+    0x02, 0x02, 0x00, 0x00 // flags - oem, ntlm
+  };
+  #undef DATA_SIZE
 
   uint16_t tmp;
 
@@ -529,10 +568,10 @@ int negotiate(Word ipid, uint16_t *path)
   setup_req.flags = 0;
   setup_req.security_mode = SMB2_NEGOTIATE_SIGNING_ENABLED;
   setup_req.capabilities = 0;
-  setup_req.security_buffer_length = 0;
+  setup_req.security_buffer_length = sizeof(setup1);
   setup_req.security_buffer_offset = sizeof(smb2_header_sync) + sizeof(smb2_session_setup_request);
 
-  write_message(ipid, &setup_req, sizeof(setup_req), NULL, 0);
+  write_message(ipid, &setup_req, sizeof(setup_req), setup1, sizeof(setup1));
 
 
   h = read_response(ipid);
@@ -559,6 +598,33 @@ int negotiate(Word ipid, uint16_t *path)
 
   header.session_id[0] = responsePtr->header.session_id[0];
   header.session_id[1] = responsePtr->header.session_id[1];
+
+
+  ntlmssp_challenge[0] = 0;
+  ntlmssp_challenge[1] = 0;
+  ntlmssp_flags = 0;
+  has_spnego = false;
+  has_mech_ntlmssp = false;
+
+  tmp = responsePtr->body.setup.security_buffer_length;
+  if (tmp)
+  {
+
+    scan_asn1((const char *)responsePtr + responsePtr->body.setup.security_buffer_offset,
+      0, tmp);
+
+    if (flags._v)
+    {
+      fprintf(stdout, "has_spnego: %d\n", has_spnego);
+      fprintf(stdout, "has_mech_ntlmssp: %d\n", has_mech_ntlmssp);
+      fprintf(stdout, "ntlmssp_flags: %08lx\n", ntlmssp_flags);
+      fprintf(stdout, "ntlmssp_challenge: %08lx%08lx\n", 
+        ntlmssp_challenge[1], ntlmssp_challenge[0]);
+    }
+
+  }
+
+
 
   DisposeHandle(h);
 
