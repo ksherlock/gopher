@@ -654,6 +654,7 @@ int negotiate(Word ipid, uint16_t *path)
   // send a second session_setup if STATUS_MORE_PROCESSING_REQUIRED
   if (tmp)
   {
+    uint32_t status;
     setup_req.security_buffer_length = sizeof(setup2);
 
     write_message(ipid, &setup_req, sizeof(setup_req), setup2, sizeof(setup2));
@@ -671,8 +672,14 @@ int negotiate(Word ipid, uint16_t *path)
       return -1;
     }
 
+    status = responsePtr->header.status == STATUS_MORE_PROCESSING_REQUIRED;
     DisposeHandle(h);
-    return -1;
+
+    if (status != 0)
+    {
+      fprintf(stderr, "Session error: %08lx\n", status);
+      return -1;
+    }
   }
 
 
