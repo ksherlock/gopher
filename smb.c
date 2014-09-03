@@ -495,6 +495,27 @@ int negotiate(Word ipid, uint16_t *path)
   };
   #undef DATA_SIZE
 
+  #define DATA_SIZE 64
+  static uint8_t setup2[] = {
+    ASN1_CONTEXT + 1, DATA_SIZE + 6, // size,
+    ASN1_SEQUENCE, DATA_SIZE + 4, //size
+    ASN1_CONTEXT + 2, DATA_SIZE + 2, // size
+    ASN1_OCTECT_STRING, DATA_SIZE, // size
+    // data...
+    'N', 'T', 'L', 'M', 'S', 'S', 'P', 0x00,
+    0x03, 0x00, 0x00, 0x00, // uint32_t - 0x03 auth
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // lm security buffer
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // ntlm security buffer
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // target name security buffer
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // user name security buffer
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // workstation name security buffer
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // session key security buffer
+    0x02, 0x0a, 0x00, 0x00 // flags - oem, ntlm, anonymous
+
+  };
+  #undef DATA_SIZE
+
+
   uint16_t tmp;
 
 
@@ -624,12 +645,36 @@ int negotiate(Word ipid, uint16_t *path)
 
   }
 
-
-
+  tmp = 0;
+  if (responsePtr->header.status == STATUS_MORE_PROCESSING_REQUIRED)
+    tmp = 1;
   DisposeHandle(h);
 
 
   // send a second session_setup if STATUS_MORE_PROCESSING_REQUIRED
+  if (tmp)
+  {
+    setup_req.security_buffer_length = sizeof(setup2);
+
+    write_message(ipid, &setup_req, sizeof(setup_req), setup2, sizeof(setup2));
+
+    h = read_response(ipid);
+    if (!h) return -1;
+    HLock(h);
+
+    responsePtr = *(smb_response **)h;
+
+    if (responsePtr->header.command != SMB2_SESSION_SETUP)
+    {
+      DisposeHandle(h);
+      fprintf(stderr, "Unexpected SMB2 command\n");
+      return -1;
+    }
+
+    DisposeHandle(h);
+    return -1;
+  }
+
 
 
   header.command = SMB2_TREE_CONNECT;
