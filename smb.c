@@ -233,6 +233,7 @@ static Handle read_response(Word ipid)
   uint8_t nbthead[4];
   LongWord qtick;
   Word terr;
+  Handle h;
 
   qtick = GetTick() + 30 * 60;
   for(;;)
@@ -290,8 +291,27 @@ static Handle read_response(Word ipid)
   }
   terr = TCPIPReadTCP(ipid, 2, (Ref)0, size, &rb);
 
-  return rb.rrBuffHandle;
+  h = rb.rrBuffHandle;
+  if (h)
+  {
+    smb_response *responsePtr;
 
+    HLock(h);
+
+    responsePtr = *(smb_response **)h;
+    dump_response(responsePtr);
+
+    if (
+      responsePtr->header.protocol_id != SMB2_MAGIC || 
+      responsePtr->header.structure_size != 64)
+    {
+      DisposeHandle(h);
+      fprintf(stderr, "Invalid SMB2 header\n");
+      return NULL;
+    }
+  }
+
+  return h;
 }
 
 
@@ -398,7 +418,7 @@ restart:
     }
   }
 
-  fprintf(stdout, "%02x %02x\n", tag, len);
+  //fprintf(stdout, "%02x %02x\n", tag, len);
 
   switch(tag)
   {
@@ -514,18 +534,7 @@ int negotiate(Word ipid, uint16_t *path)
   if (!h) return -1;
   HLock(h);
 
-  //hexdump(*h, GetHandleSize(h));
-
   responsePtr = *(smb_response **)h;
-
-  dump_response(responsePtr);
-
-  if (responsePtr->header.protocol_id != SMB2_MAGIC || responsePtr->header.structure_size != 64)
-  {
-    DisposeHandle(h);
-    fprintf(stderr, "Invalid SMB2 header\n");
-    return -1;
-  }
 
   if (responsePtr->header.command != SMB2_NEGOTIATE)
   {
@@ -579,15 +588,6 @@ int negotiate(Word ipid, uint16_t *path)
   HLock(h);
 
   responsePtr = *(smb_response **)h;
-
-  dump_response(responsePtr);
-
-  if (responsePtr->header.protocol_id != SMB2_MAGIC || responsePtr->header.structure_size != 64)
-  {
-    DisposeHandle(h);
-    fprintf(stderr, "Invalid SMB2 header\n");
-    return -1;
-  }
 
   if (responsePtr->header.command != SMB2_SESSION_SETUP)
   {
@@ -646,15 +646,6 @@ int negotiate(Word ipid, uint16_t *path)
   HLock(h);
 
   responsePtr = *(smb_response **)h;
-
-  dump_response(responsePtr);
-
-  if (responsePtr->header.protocol_id != SMB2_MAGIC || responsePtr->header.structure_size != 64)
-  {
-    DisposeHandle(h);
-    fprintf(stderr, "Invalid SMB2 header\n");
-    return -1;
-  }
 
   if (responsePtr->header.command != SMB2_TREE_CONNECT)
   {
