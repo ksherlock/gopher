@@ -174,6 +174,22 @@ enum {
   FILE_OVERWRITTEN =  0x0003
 };
 
+// close flags.
+enum { 
+  SMB2_CLOSE_FLAG_POSTQUERY_ATTRIB = 0x0001
+};
+
+// read flags
+enum {
+  SMB2_READFLAG_READ_UNBUFFERED = 0x01
+};
+
+enum {
+  SMB2_CHANNEL_NONE = 0x0000,
+  SMB2_CHANNEL_RDMA_V1 = 0x0001,
+  SMB2_CHANNEL_RDMA_V1_INVALIDATE = 0x0002
+};
+
 typedef struct smb2_header_sync {
 
   uint32_t protocol_id;
@@ -290,7 +306,6 @@ typedef struct smb2_tree_connect_response {
   uint32_t maximal_access;
 } smb2_tree_connect_response;
 
-
 typedef struct smb2_tree_disconnect_request {
   uint16_t structure_size;
   uint16_t reserved;
@@ -349,6 +364,61 @@ typedef struct smb2_create_response {
   // uint8_t buffer[0];
 } smb2_create_response;
 
+typedef struct smb2_close_request {
+  uint16_t structure_size;
+  uint16_t flags;
+  uint32_t reserved;
+  uint32_t file_id[4];
+} smb2_close_request;
 
+typedef struct smb2_close_response {
+  uint16_t structure_size;
+  uint16_t flags;
+  uint32_t reserved;
+  uint32_t creation_time[2];
+  uint32_t last_access_time[2];
+  uint32_t last_write_time[2];
+  uint32_t change_time[2];
+  uint32_t allocation_size[2];
+  uint32_t end_of_file[2];
+  uint32_t file_attributes;
+} smb2_close_response;
+
+typedef struct smb2_flush_request {
+  uint16_t structure_size;
+  uint16_t reserved;
+  uint32_t reserved2;
+  uint32_t file_id[4];
+} smb2_flush_request;
+
+typedef struct smb2_flush_response {
+  uint16_t structure_size;
+  uint16_t reserved;
+} smb2_flush_response;
+
+typedef struct smb2_read_request {
+  uint16_t structure_size;
+  uint8_t padding;
+  uint8_t flags;
+  uint32_t length;
+  uint32_t offset[2];
+  uint32_t file_id[4];
+  uint32_t minimum_count;
+  uint32_t channel;
+  uint32_t remaining_bytes;
+  uint16_t read_channel_info_offset;
+  uint16_t read_channel_info_length;
+  // uint8_t buffer[0];
+} smb2_read_request;
+
+typedef struct smb2_read_response {
+  uint16_t structure_size;
+  uint8_t data_offset;
+  uint8_t reserved;
+  uint32_t data_length;
+  uint32_t data_remaining;
+  uint32_t reserved2;
+  // uint8_t buffer[0];
+} smb2_read_response;
 
 #endif
