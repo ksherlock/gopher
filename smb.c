@@ -468,6 +468,9 @@ restart:
   return offset + len;
 }
 
+
+
+// see wireshark / epan / dissectors / packet-ntlmssp.c
 int negotiate(Word ipid, uint16_t *path)
 {
   static struct smb2_negotiate_request negotiate_req;

@@ -110,6 +110,70 @@ enum {
   SMB2_SHARE_CAP_ASYMMETRIC = 0x0080
 };
 
+// create - oplock
+enum {
+  SMB2_OPLOCK_LEVEL_NONE = 0x00,
+  SMB2_OPLOCK_LEVEL_II = 0x01,
+  SMB2_OPLOCK_LEVEL_EXCLUSIVE = 0x08,
+  SMB2_OPLOCK_LEVEL_BATCH = 0x09,
+  SMB2_OPLOCK_LEVEL_LEAVE = 0xff
+};
+
+// create - impersonation
+enum {
+  IMPERSONATION_ANONYMOUS = 0x00,
+  IMPERSONATION_IDENTIFICATION = 0x01,
+  IMPERSONATION_IMPERSONATION = 0x02,
+  IMPERSONATION_DELEGATE = 0x03
+};
+
+// create - share access
+enum {
+  FILE_SHARE_READ = 0x01,
+  FILE_SHARE_WRITE = 0x02,
+  FILE_SHARE_DELETE = 0x04
+};
+
+// create - disposition
+enum {
+  FILE_SUPERSEDE = 0x0000,
+  FILE_OPEN = 0x0001,
+  FILE_CREATE = 0x0002,
+  FILE_OPEN_IF = 0x0003,
+  FILE_OVERWRITE = 0x0004,
+  FILE_OVERWRITE_IF = 0x0005
+};
+
+// create - options
+enum {
+  FILE_DIRECTORY_FILE = 0x0001,
+  FILE_WRITE_THROUGH = 0x0002,
+  FILE_SEQUENTIAL_ONLY = 0x0004,
+  FILE_NO_INTERMEDIATE_BUFFERING = 0x0008,
+  FILE_NON_DIRECTORY_FILE = 0x0040,
+  FILE_NO_EA_KNOWLEDGE = 0x0200,
+  FILE_RANDOM_ACCESS = 0x0800,
+  FILE_DELETE_ON_CLOSE = 0x1000,
+  FILE_OPEN_FOR_BACKUP_INTENT = 0x4000,
+  FILE_NO_COMPRESSION = 0x8000
+};
+
+#define FILE_OPEN_REPARSE_POINT 0x00200000
+#define FILE_OPEN_NO_RECALL 0x00400000
+
+// create response - flags
+enum {
+  SMB2_CREATE_FLAG_REPARSEPOINT  = 0x01
+};
+
+// create response - action
+enum {
+  FILE_SUPERSEDED =  0x0000,
+  FILE_OPENED =  0x0001,
+  FILE_CREATED =  0x0002,
+  FILE_OVERWRITTEN =  0x0003
+};
+
 typedef struct smb2_header_sync {
 
   uint32_t protocol_id;
@@ -246,5 +310,45 @@ typedef struct smb2_logoff_response {
   uint16_t structure_size;
   uint16_t reserved;
 } smb2_logoff_response;
+
+typedef struct smb2_create_request {
+  uint16_t structure_size;
+  uint8_t security_flags;
+  uint8_t request_oplock_level;
+  uint32_t impersonation_level;
+  uint32_t smb_create_flags[2];
+  uint32_t reserved[2];
+  uint32_t desired_access;
+  uint32_t file_attributes;
+  uint32_t share_access;
+  uint32_t create_disposition;
+  uint32_t create_options;
+  uint16_t name_offset;
+  uint16_t name_length;
+  uint32_t create_contexts_offset;
+  uint32_t create_contexts_length;
+  //uint8_t buffer[0];
+} smb2_create_request;
+
+typedef struct smb2_create_response {
+  uint16_t structure_size;
+  uint8_t oplock_level;
+  uint8_t flags;
+  uint32_t create_action;
+  uint32_t creation_time[2];
+  uint32_t last_access_time[2];
+  uint32_t last_write_time[2];
+  uint32_t change_time[2];
+  uint32_t allocation_size[2];
+  uint32_t end_of_file[2];
+  uint32_t file_attributes;
+  uint32_t reserved2;
+  uint32_t file_id[4];
+  uint32_t create_contexts_offset;
+  uint32_t create_contexts_length;
+  // uint8_t buffer[0];
+} smb2_create_response;
+
+
 
 #endif
