@@ -28,7 +28,7 @@ options.o: options.c options.h
 gopher.o: gopher.c url.h connection.h options.h
 http.o: http.c url.h connection.h options.h
 http.utils.o: http.utils.c
-smb.o: smb.c smb.h smb.errors.h url.h connection.h options.h 
+smb.o: smb.c smb.h smb.errors.h asn1.h url.h connection.h options.h 
 
 data.o: data.c data.h
 dictionary.o: dictionary.c dictionary.h
