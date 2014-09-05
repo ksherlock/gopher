@@ -79,35 +79,38 @@ static int is_error(const smb_response *msg)
 
 static void dump_header(const smb2_header_sync *header)
 {
-  fprintf(stdout, "   protocol_id: %08lx\n", header->protocol_id);
-  fprintf(stdout, "structure_size: %04x\n", header->structure_size);
-  fprintf(stdout, " credit_charge: %04x\n", header->credit_charge);
-  fprintf(stdout, "        status: %08lx\n", header->status);
-  fprintf(stdout, "       command: %04x\n", header->command);
-  fprintf(stdout, "        credit: %04x\n", header->credit);
+  fprintf(stdout, "           protocol_id: %08lx\n", header->protocol_id);
+  fprintf(stdout, "        structure_size: %04x\n", header->structure_size);
+  fprintf(stdout, "         credit_charge: %04x\n", header->credit_charge);
+  fprintf(stdout, "                status: %08lx\n", header->status);
+  fprintf(stdout, "               command: %04x\n", header->command);
+  fprintf(stdout, "                credit: %04x\n", header->credit);
   fprintf(stdout, "         flags: %08lx\n", header->flags);
-  fprintf(stdout, "  next_command: %08lx\n", header->next_command);
-  fprintf(stdout, "    message_id: %08lx%08lx\n", 
+  fprintf(stdout, "          next_command: %08lx\n", header->next_command);
+  fprintf(stdout, "            message_id: %08lx%08lx\n", 
     header->message_id[1], header->message_id[0]);
-  fprintf(stdout, "      reserved: %08lx\n", header->reserved);
-  fprintf(stdout, "       tree_id: %08lx\n", header->tree_id);
-  fprintf(stdout, "    session_id: %08lx%08lx\n", 
+  fprintf(stdout, "              reserved: %08lx\n", header->reserved);
+  fprintf(stdout, "               tree_id: %08lx\n", header->tree_id);
+  fprintf(stdout, "            session_id: %08lx%08lx\n", 
     header->session_id[1], header->session_id[0]);
 
-  fprintf(stdout, "     signature:\n");
+  fprintf(stdout, "             signature:\n");
   hexdump(header->signature, 16);
 
+  fprintf(stdout, "\n");
 }
 
 
 static void dump_error(const smb2_error_response *msg)
 {
-  fprintf(stdout, "structure_size: %04x\n", msg->structure_size);
-  fprintf(stdout, "      reserved: %04x\n", msg->reserved);
-  fprintf(stdout, "     bytecount: %08lx\n", msg->bytecount);
+  fprintf(stdout, "        structure_size: %04x\n", msg->structure_size);
+  fprintf(stdout, "              reserved: %04x\n", msg->reserved);
+  fprintf(stdout, "             bytecount: %08lx\n", msg->bytecount);
 
-  fprintf(stdout, "   error_data:\n");
+  fprintf(stdout, "            error_data:\n");
   hexdump((const char *)msg + sizeof(smb2_error_response) , msg->bytecount);
+
+  fprintf(stdout, "\n");
 }
 
 
@@ -139,6 +142,8 @@ static void dump_negotiate(const smb2_negotiate_response *msg)
   hexdump((const char *)msg - sizeof(smb2_header_sync) + 
     msg->security_buffer_offset, 
     msg->security_buffer_length);
+
+  fprintf(stdout, "\n");
 }
 
 static void dump_setup(const smb2_session_setup_response *msg)
@@ -152,6 +157,8 @@ static void dump_setup(const smb2_session_setup_response *msg)
   hexdump((const char *)msg - sizeof(smb2_header_sync) + 
     msg->security_buffer_offset, 
     msg->security_buffer_length);
+
+  fprintf(stdout, "\n");
 }
 
 
@@ -163,6 +170,8 @@ static void dump_tree_connect(const smb2_tree_connect_response *msg)
   fprintf(stdout, "           share_flags: %08lx\n", msg->share_flags);
   fprintf(stdout, "          capabilities: %08lx\n", msg->capabilities);
   fprintf(stdout, "        maximal_access: %08lx\n", msg->maximal_access);
+
+  fprintf(stdout, "\n");
 }
 
 static void dump_error(const smb2_error_response *msg)
@@ -173,12 +182,16 @@ static void dump_error(const smb2_error_response *msg)
 
   fprintf(stdout, "           error_data:\n");
   hexdump((const char *)msg + sizeof(smb2_error_response), msg->bytecount);
+
+  fprintf(stdout, "\n");
 }
 
 static void dump_logoff(const smb2_logoff_response *msg)
 {
   fprintf(stdout, "        structure_size: %04x\n", msg->structure_size);
   fprintf(stdout, "              reserved: %04x\n", msg->reserved);  
+
+  fprintf(stdout, "\n");
 }
 
 
@@ -200,7 +213,7 @@ static void dump_close(const smb2_close_response *msg)
   fprintf(stdout, "           change_time: %08lx%08lx\n", 
     msg->change_time[1], msg->change_time[2]);
 
-  fprintf(stdout,        "allocation_size: %08lx%08lx\n", 
+  fprintf(stdout,"        allocation_size: %08lx%08lx\n", 
     msg->allocation_size[1], msg->allocation_size[2]);
 
   fprintf(stdout, "           end_of_file: %08lx%08lx\n", 
@@ -208,6 +221,7 @@ static void dump_close(const smb2_close_response *msg)
 
   fprintf(stdout, "       file_attributes: %08lx\n", msg->file_attributes);
 
+  fprintf(stdout, "\n");
 }
 
 static void dump_create(const smb2_create_response *msg)
@@ -247,6 +261,8 @@ static void dump_create(const smb2_create_response *msg)
   hexdump((const char *)msg - sizeof(smb2_header_sync) + 
     msg->create_contexts_offset, 
     msg->create_contexts_length);
+
+  fprintf(stdout, "\n");
 }
 
 
@@ -936,7 +952,7 @@ int do_smb(char *url, URLComponents *components)
   if (ok == 0)
   {
     path = cstring_to_unicode("hello.text");
-
+    ok = open_and_read(connection.ipid, path);
   }
 
 
