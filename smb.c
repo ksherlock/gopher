@@ -87,10 +87,12 @@ static void dump_header(const smb2_header_sync *header)
   fprintf(stdout, "        credit: %04x\n", header->credit);
   fprintf(stdout, "         flags: %08lx\n", header->flags);
   fprintf(stdout, "  next_command: %08lx\n", header->next_command);
-  fprintf(stdout, "    message_id: %08lx%08lx\n", header->message_id[1], header->message_id[0]);
+  fprintf(stdout, "    message_id: %08lx%08lx\n", 
+    header->message_id[1], header->message_id[0]);
   fprintf(stdout, "      reserved: %08lx\n", header->reserved);
   fprintf(stdout, "       tree_id: %08lx\n", header->tree_id);
-  fprintf(stdout, "    session_id: %08lx%08lx\n", header->session_id[1], header->session_id[0]);
+  fprintf(stdout, "    session_id: %08lx%08lx\n", 
+    header->session_id[1], header->session_id[0]);
 
   fprintf(stdout, "     signature:\n");
   hexdump(header->signature, 16);
@@ -134,7 +136,8 @@ static void dump_negotiate(const smb2_negotiate_response *msg)
   fprintf(stdout, "             reserved2: %08lx\n", msg->reserved2);
 
   fprintf(stdout, "                buffer:\n");
-  hexdump((const char *)msg - sizeof(smb2_header_sync) + msg->security_buffer_offset, 
+  hexdump((const char *)msg - sizeof(smb2_header_sync) + 
+    msg->security_buffer_offset, 
     msg->security_buffer_length);
 }
 
@@ -146,7 +149,8 @@ static void dump_setup(const smb2_session_setup_response *msg)
   fprintf(stdout, "security_buffer_length: %04x\n", msg->security_buffer_length);
 
   fprintf(stdout, "                buffer:\n");
-  hexdump((const char *)msg - sizeof(smb2_header_sync) + msg->security_buffer_offset, 
+  hexdump((const char *)msg - sizeof(smb2_header_sync) + 
+    msg->security_buffer_offset, 
     msg->security_buffer_length);
 }
 
@@ -175,6 +179,74 @@ static void dump_logoff(const smb2_logoff_response *msg)
 {
   fprintf(stdout, "        structure_size: %04x\n", msg->structure_size);
   fprintf(stdout, "              reserved: %04x\n", msg->reserved);  
+}
+
+
+static void dump_close(const smb2_close_response *msg)
+{
+  fprintf(stdout, "        structure_size: %04x\n", msg->structure_size);
+  fprintf(stdout, "                 flags: %04x\n", msg->flags);
+  fprintf(stdout, "              reserved: %08lx\n", msg->reserved);
+
+  fprintf(stdout, "         creation_time: %08lx%08lx\n", 
+    msg->creation_time[1], msg->creation_time[0]);
+
+  fprintf(stdout, "      last_access_time: %08lx%08lx\n", 
+    msg->last_access_time[1], msg->last_access_time[2]);
+
+  fprintf(stdout, "       last_write_time: %08lx%08lx\n", 
+    msg->last_write_time[1], msg->last_write_time[2]);
+
+  fprintf(stdout, "           change_time: %08lx%08lx\n", 
+    msg->change_time[1], msg->change_time[2]);
+
+  fprintf(stdout,        "allocation_size: %08lx%08lx\n", 
+    msg->allocation_size[1], msg->allocation_size[2]);
+
+  fprintf(stdout, "           end_of_file: %08lx%08lx\n", 
+    msg->end_of_file[1], msg->end_of_file[2]);
+
+  fprintf(stdout, "       file_attributes: %08lx\n", msg->file_attributes);
+
+}
+
+static void dump_create(const smb2_create_response *msg)
+{
+  fprintf(stdout, "        structure_size: %04x\n", msg->structure_size);
+  fprintf(stdout, "          oplock_level: %02x\n", msg->oplock_level);
+  fprintf(stdout, "                 flags: %02x\n", msg->flags);
+  fprintf(stdout, "         create_action: %08lx\n", msg->create_action);
+
+  fprintf(stdout, "         creation_time: %08lx%08lx\n", 
+    msg->creation_time[1], msg->creation_time[0]);
+  fprintf(stdout, "      last_access_time: %08lx%08lx\n", 
+    msg->last_access_time[1], msg->last_access_time[0]);
+  fprintf(stdout, "       last_write_time: %08lx%08lx\n", 
+    msg->last_write_time[1], msg->last_write_time[0]);
+  fprintf(stdout, "           change_time: %08lx%08lx\n", 
+    msg->change_time[1], msg->change_time[0]);
+  fprintf(stdout, "       allocation_size: %08lx%08lx\n", 
+    msg->allocation_size[1], msg->allocation_size[0]);
+  fprintf(stdout, "           end_of_file: %08lx%08lx\n", 
+    msg->end_of_file[1], msg->end_of_file[0]);
+
+  fprintf(stdout, "       file_attributes: %08lx\n", msg->file_attributes);
+  fprintf(stdout, "             reserved2: %08lx\n", msg->reserved2);
+  fprintf(stdout, "               file_id: %08lx%08lx\n", 
+    msg->file_id[1], msg->file_id[0]);
+
+  fprintf(stdout, "                      : %08lx%08lx\n", 
+    msg->file_id[3], msg->file_id[2]);
+
+  fprintf(stdout, "create_contexts_offset: %08lx\n", 
+    msg->create_contexts_offset);
+  fprintf(stdout, "create_contexts_length: %08lx\n", 
+    msg->create_contexts_length);
+
+  fprintf(stdout, "                buffer:\n");
+  hexdump((const char *)msg - sizeof(smb2_header_sync) + 
+    msg->create_contexts_offset, 
+    msg->create_contexts_length);
 }
 
 
@@ -207,6 +279,14 @@ static void dump_response(const smb_response *msg)
     case SMB2_TREE_DISCONNECT:
     case SMB2_FLUSH:
       dump_logoff(&msg->body.logoff);
+      break;
+
+    case SMB2_CREATE:
+      dump_create(&msg->body.create);
+      break;
+
+    case SMB2_CLOSE:
+      dump_close(&msg->body.close);
       break;
 
     default:
@@ -756,6 +836,65 @@ static int disconnect(Word ipid)
 }
 
 
+static int open_and_read(Word ipid, const uint16_t *path)
+{
+  static smb2_create_request create_req;
+  static smb2_close_request close_req;
+  static smb2_read_request read_req;
+
+  Handle h;
+  smb_response *responsePtr;
+  uint32_t file_id[4]; //!
+
+  memset(&create_req, 0, sizeof(create_req));
+  memset(&close_req, 0, sizeof(close_req));
+  memset(&read_req, 0, sizeof(read_req));
+
+
+  create_req.structure_size = 57;
+  create_req.desired_access = GENERIC_READ;
+  create_req.file_attributes = 0;
+  create_req.share_access = FILE_SHARE_READ;
+  create_req.create_disposition = FILE_OPEN;
+  create_req.create_options = FILE_SEQUENTIAL_ONLY | FILE_NON_DIRECTORY_FILE;
+
+  create_req.name_offset = sizeof(smb2_header_sync) + sizeof(smb2_create_request);
+  create_req.name_length = path[0] * 2;
+
+  header.command = SMB2_CREATE;
+
+  write_message(ipid, &create_req, sizeof(create_req), path + 1, path[0] * 2);
+
+  h = read_response(ipid, SMB2_CREATE);
+  if (!h) return -1;
+
+  responsePtr = *(smb_response **)h;
+  file_id[0] = responsePtr->body.create.file_id[0];
+  file_id[1] = responsePtr->body.create.file_id[1];
+  file_id[2] = responsePtr->body.create.file_id[2];
+  file_id[3] = responsePtr->body.create.file_id[3];
+
+  DisposeHandle(h);
+
+
+  close_req.structure_size = 24;
+  close_req.file_id[0] = file_id[0];
+  close_req.file_id[1] = file_id[1];
+  close_req.file_id[2] = file_id[2];
+  close_req.file_id[3] = file_id[3];
+
+  header.command = SMB2_CLOSE;
+  write_message(ipid, &close_req, sizeof(close_req), NULL, 0);
+ 
+  h = read_response(ipid, SMB2_CLOSE);
+  if (!h) return -1;
+
+  DisposeHandle(h);
+
+  return 0;
+}
+
+
 int do_smb(char *url, URLComponents *components)
 {
   static Connection connection;
@@ -790,6 +929,17 @@ int do_smb(char *url, URLComponents *components)
 
   path = cstring_to_unicode("\\\\192.168.1.254\\public");
   ok = negotiate(connection.ipid, path);
+
+  free(path);
+  path = NULL;
+
+  if (ok == 0)
+  {
+    path = cstring_to_unicode("hello.text");
+
+  }
+
+
   ok = disconnect(connection.ipid);
 
 
