@@ -37,6 +37,9 @@ typedef struct smb_response {
     smb2_session_setup_response setup;
     smb2_tree_connect_response tree_connect;
     smb2_logoff_response logoff;
+    smb2_create_response create;
+    smb2_close_response close;
+    smb2_read_response read;
   } body;
 
 } smb_response;
@@ -492,12 +495,12 @@ restart:
 
 
 // see wireshark / epan / dissectors / packet-ntlmssp.c
-int negotiate(Word ipid, uint16_t *path)
+static int negotiate(Word ipid, uint16_t *path)
 {
   static struct smb2_negotiate_request negotiate_req;
   static struct smb2_session_setup_request setup_req;
   static struct smb2_tree_connect_request tree_req;
-  static struct smb2_logoff_request logoff_req;
+
 
   static uint16_t dialects[] = { 0x0202 };
 
@@ -558,7 +561,6 @@ int negotiate(Word ipid, uint16_t *path)
   memset(&negotiate_req, 0, sizeof(negotiate_req));
   memset(&setup_req, 0, sizeof(setup_req));
   memset(&tree_req, 0, sizeof(tree_req));
-  memset(&logoff_req, 0, sizeof(logoff_req));
 
   header.protocol_id = SMB2_MAGIC; // '\xfeSMB';
   header.structure_size = 64;
@@ -709,22 +711,46 @@ int negotiate(Word ipid, uint16_t *path)
 
   DisposeHandle(h);
 
-  // tree disconnect
-  header.command = SMB2_TREE_DISCONNECT;
+
+
+  return 0;
+}
+
+
+static int disconnect(Word ipid)
+{
+  static struct smb2_logoff_request logoff_req;
+
+  Handle h;
+
+  memset(&logoff_req, 0, sizeof(logoff_req));
 
   logoff_req.structure_size = 4;
 
-  write_message(ipid, &logoff_req, sizeof(logoff_req), NULL, 0);
-  h = read_response(ipid, SMB2_TREE_DISCONNECT);
-  if (!h) return -1;
-  DisposeHandle(h);
+  if (header.tree_id)
+  {
+    header.command = SMB2_TREE_DISCONNECT;
 
-  header.tree_id = 0;
-  header.command = SMB2_LOGOFF;  
-  write_message(ipid, &logoff_req, sizeof(logoff_req), NULL, 0);
-  h = read_response(ipid, SMB2_LOGOFF);
-  if (!h) return -1;
-  DisposeHandle(h);
+    write_message(ipid, &logoff_req, sizeof(logoff_req), NULL, 0);
+    h = read_response(ipid, SMB2_TREE_DISCONNECT);
+    if (!h) return -1;
+    DisposeHandle(h);
+
+    header.tree_id = 0;
+  }
+
+  if (header.session_id[0] || header.session_id[1])
+  {
+    header.command = SMB2_LOGOFF;
+
+    write_message(ipid, &logoff_req, sizeof(logoff_req), NULL, 0);
+    h = read_response(ipid, SMB2_LOGOFF);
+    if (!h) return -1;
+    DisposeHandle(h);
+
+    header.session_id[0] = 0;
+    header.session_id[1] = 0;
+  }
 
   return 0;
 }
@@ -764,8 +790,7 @@ int do_smb(char *url, URLComponents *components)
 
   path = cstring_to_unicode("\\\\192.168.1.254\\public");
   ok = negotiate(connection.ipid, path);
-  if (ok) return ok;
-
+  ok = disconnect(connection.ipid);
 
 
   CloseLoop(&connection);
