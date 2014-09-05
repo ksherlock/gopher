@@ -223,7 +223,7 @@ static void write_message(Word ipid, const void *data1, unsigned size1, const vo
   TCPIPWriteTCP(ipid, (dataPtr)data2, size2, true, false);
 }
 
-static Handle read_response(Word ipid)
+static Handle read_response(Word ipid, uint32_t command)
 {
   static srBuff sr;
   static rrBuff rb;
@@ -309,6 +309,14 @@ static Handle read_response(Word ipid)
       fprintf(stderr, "Invalid SMB2 header\n");
       return NULL;
     }
+
+    if (responsePtr->header.command != command)
+    {
+      DisposeHandle(h);
+      fprintf(stderr, "Unexpected SMB2 command\n");
+      return NULL;
+    }
+
   }
 
   return h;
@@ -554,18 +562,12 @@ int negotiate(Word ipid, uint16_t *path)
 
   // read a response...
 
-  h = read_response(ipid);
+  h = read_response(ipid, SMB2_NEGOTIATE);
   if (!h) return -1;
   HLock(h);
 
   responsePtr = *(smb_response **)h;
 
-  if (responsePtr->header.command != SMB2_NEGOTIATE)
-  {
-    DisposeHandle(h);
-    fprintf(stderr, "Unexpected SMB2 command\n");
-    return -1;
-  }
 
   // the security buffer is asn.1.  This checks for spnego/ntlmssp.
   // probably not necessary... what else are we going to do?
@@ -607,18 +609,12 @@ int negotiate(Word ipid, uint16_t *path)
   write_message(ipid, &setup_req, sizeof(setup_req), setup1, sizeof(setup1));
 
 
-  h = read_response(ipid);
+  h = read_response(ipid, SMB2_SESSION_SETUP);
   if (!h) return -1;
   HLock(h);
 
   responsePtr = *(smb_response **)h;
 
-  if (responsePtr->header.command != SMB2_SESSION_SETUP)
-  {
-    DisposeHandle(h);
-    fprintf(stderr, "Unexpected SMB2 command\n");
-    return -1;
-  }
 
   header.session_id[0] = responsePtr->header.session_id[0];
   header.session_id[1] = responsePtr->header.session_id[1];
@@ -662,18 +658,11 @@ int negotiate(Word ipid, uint16_t *path)
 
     write_message(ipid, &setup_req, sizeof(setup_req), setup2, sizeof(setup2));
 
-    h = read_response(ipid);
+    h = read_response(ipid, SMB2_SESSION_SETUP);
     if (!h) return -1;
     HLock(h);
 
     responsePtr = *(smb_response **)h;
-
-    if (responsePtr->header.command != SMB2_SESSION_SETUP)
-    {
-      DisposeHandle(h);
-      fprintf(stderr, "Unexpected SMB2 command\n");
-      return -1;
-    }
 
     status = responsePtr->header.status == STATUS_MORE_PROCESSING_REQUIRED;
     DisposeHandle(h);
@@ -696,18 +685,13 @@ int negotiate(Word ipid, uint16_t *path)
   write_message(ipid, &tree_req, sizeof(tree_req), path + 1, path[0] * 2);
 
 
-  h = read_response(ipid);
+  h = read_response(ipid, SMB2_TREE_CONNECT);
   if (!h) return -1;
   HLock(h);
 
   responsePtr = *(smb_response **)h;
 
-  if (responsePtr->header.command != SMB2_TREE_CONNECT)
-  {
-    DisposeHandle(h);
-    fprintf(stderr, "Unexpected SMB2 command\n");
-    return -1;
-  }
+
   DisposeHandle(h);
 
 
