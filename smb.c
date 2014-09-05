@@ -168,6 +168,13 @@ static void dump_error(const smb2_error_response *msg)
   hexdump((const char *)msg + sizeof(smb2_error_response), msg->bytecount);
 }
 
+static void dump_logoff(const smb2_logoff_response *msg)
+{
+  fprintf(stdout, "        structure_size: %04x\n", msg->structure_size);
+  fprintf(stdout, "              reserved: %04x\n", msg->reserved);  
+}
+
+
 static void dump_response(const smb_response *msg)
 {
   if (!msg) return;
@@ -191,6 +198,12 @@ static void dump_response(const smb_response *msg)
 
     case SMB2_TREE_CONNECT:
       dump_tree_connect(&msg->body.tree_connect);
+      break;
+
+    case SMB2_LOGOFF:
+    case SMB2_TREE_DISCONNECT:
+    case SMB2_FLUSH:
+      dump_logoff(&msg->body.logoff);
       break;
 
     default:
@@ -484,6 +497,7 @@ int negotiate(Word ipid, uint16_t *path)
   static struct smb2_negotiate_request negotiate_req;
   static struct smb2_session_setup_request setup_req;
   static struct smb2_tree_connect_request tree_req;
+  static struct smb2_logoff_request logoff_req;
 
   static uint16_t dialects[] = { 0x0202 };
 
@@ -544,7 +558,7 @@ int negotiate(Word ipid, uint16_t *path)
   memset(&negotiate_req, 0, sizeof(negotiate_req));
   memset(&setup_req, 0, sizeof(setup_req));
   memset(&tree_req, 0, sizeof(tree_req));
-
+  memset(&logoff_req, 0, sizeof(logoff_req));
 
   header.protocol_id = SMB2_MAGIC; // '\xfeSMB';
   header.structure_size = 64;
@@ -691,9 +705,26 @@ int negotiate(Word ipid, uint16_t *path)
 
   responsePtr = *(smb_response **)h;
 
+  header.tree_id = responsePtr->header.tree_id;
 
   DisposeHandle(h);
 
+  // tree disconnect
+  header.command = SMB2_TREE_DISCONNECT;
+
+  logoff_req.structure_size = 4;
+
+  write_message(ipid, &logoff_req, sizeof(logoff_req), NULL, 0);
+  h = read_response(ipid, SMB2_TREE_DISCONNECT);
+  if (!h) return -1;
+  DisposeHandle(h);
+
+  header.tree_id = 0;
+  header.command = SMB2_LOGOFF;  
+  write_message(ipid, &logoff_req, sizeof(logoff_req), NULL, 0);
+  h = read_response(ipid, SMB2_LOGOFF);
+  if (!h) return -1;
+  DisposeHandle(h);
 
   return 0;
 }
