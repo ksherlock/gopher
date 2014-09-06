@@ -85,7 +85,7 @@ static void dump_header(const smb2_header_sync *header)
   fprintf(stdout, "                status: %08lx\n", header->status);
   fprintf(stdout, "               command: %04x\n", header->command);
   fprintf(stdout, "                credit: %04x\n", header->credit);
-  fprintf(stdout, "         flags: %08lx\n", header->flags);
+  fprintf(stdout, "                 flags: %08lx\n", header->flags);
   fprintf(stdout, "          next_command: %08lx\n", header->next_command);
   fprintf(stdout, "            message_id: %08lx%08lx\n", 
     header->message_id[1], header->message_id[0]);
@@ -139,8 +139,9 @@ static void dump_negotiate(const smb2_negotiate_response *msg)
   fprintf(stdout, "             reserved2: %08lx\n", msg->reserved2);
 
   fprintf(stdout, "                buffer:\n");
-  hexdump((const char *)msg - sizeof(smb2_header_sync) + 
-    msg->security_buffer_offset, 
+  hexdump((const char *)msg 
+    - sizeof(smb2_header_sync)
+    + msg->security_buffer_offset, 
     msg->security_buffer_length);
 
   fprintf(stdout, "\n");
@@ -154,8 +155,9 @@ static void dump_setup(const smb2_session_setup_response *msg)
   fprintf(stdout, "security_buffer_length: %04x\n", msg->security_buffer_length);
 
   fprintf(stdout, "                buffer:\n");
-  hexdump((const char *)msg - sizeof(smb2_header_sync) + 
-    msg->security_buffer_offset, 
+  hexdump((const char *)msg 
+    - sizeof(smb2_header_sync)
+    + msg->security_buffer_offset, 
     msg->security_buffer_length);
 
   fprintf(stdout, "\n");
@@ -213,7 +215,7 @@ static void dump_close(const smb2_close_response *msg)
   fprintf(stdout, "           change_time: %08lx%08lx\n", 
     msg->change_time[1], msg->change_time[2]);
 
-  fprintf(stdout,"        allocation_size: %08lx%08lx\n", 
+  fprintf(stdout, "       allocation_size: %08lx%08lx\n", 
     msg->allocation_size[1], msg->allocation_size[2]);
 
   fprintf(stdout, "           end_of_file: %08lx%08lx\n", 
@@ -259,8 +261,9 @@ static void dump_create(const smb2_create_response *msg)
 
   fprintf(stdout, "                buffer:\n");
 
-  hexdump((const char *)msg - sizeof(smb2_header_sync) + 
-    msg->create_contexts_offset, 
+  hexdump((const char *)msg 
+    - sizeof(smb2_header_sync) 
+    + msg->create_contexts_offset, 
     msg->create_contexts_length);
 
   fprintf(stdout, "\n");
@@ -270,16 +273,17 @@ static void dump_read(const smb2_read_response *msg)
 {
 
   fprintf(stdout, "        structure_size: %04x\n", msg->structure_size);
-  fprintf(stdout, "data_offset: %02x\n", msg->data_offset);
-  fprintf(stdout, "reserved: %02x\n", msg->reserved);
-  fprintf(stdout, "data_length: %08lx\n", msg->data_length);
-  fprintf(stdout, "data_remaining: %08lx\n", msg->data_remaining);
-  fprintf(stdout, "reserved2: %08lx\n", msg->reserved2);
+  fprintf(stdout, "           data_offset: %02x\n", msg->data_offset);
+  fprintf(stdout, "              reserved: %02x\n", msg->reserved);
+  fprintf(stdout, "           data_length: %08lx\n", msg->data_length);
+  fprintf(stdout, "        data_remaining: %08lx\n", msg->data_remaining);
+  fprintf(stdout, "             reserved2: %08lx\n", msg->reserved2);
 
   fprintf(stdout, "                buffer:\n");
 
-  hexdump((const char *)msg + sizeof(smb2_read_response) + 
-    msg->data_offset, 
+  hexdump((const char *)msg 
+    - sizeof(smb2_header_sync) 
+    + msg->data_offset, 
     msg->data_length);
 
   fprintf(stdout, "\n");
