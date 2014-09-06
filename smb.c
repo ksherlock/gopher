@@ -886,6 +886,8 @@ static int open_and_read(Word ipid, const uint16_t *path)
   Handle h;
   smb_response *responsePtr;
   uint32_t file_id[4]; //!
+  uint32_t eof;
+  uint32_t offset;
 
   memset(&create_req, 0, sizeof(create_req));
   memset(&close_req, 0, sizeof(close_req));
@@ -915,7 +917,75 @@ static int open_and_read(Word ipid, const uint16_t *path)
   file_id[2] = responsePtr->body.create.file_id[2];
   file_id[3] = responsePtr->body.create.file_id[3];
 
+  eof = responsePtr->body.create.end_of_file[0];
+
+  if (responsePtr->body.create.end_of_file[1])
+  {
+    fprintf(stderr, "File is too large!\n");
+  }
   DisposeHandle(h);
+
+  // read
+  read_req.structure_size = 49;
+  //read_req.flags = 0;
+  //read_req.offset[0] = 0;
+  //read_req.offset[1] = 0;
+  read_req.file_id[0] = file_id[0];
+  read_req.file_id[1] = file_id[1];
+  read_req.file_id[2] = file_id[2];
+  read_req.file_id[3] = file_id[3];
+  //read_req.minimum_count = 0;
+  //read_req.channel = 0;
+
+  header.command = SMB2_READ;
+
+  offset = 0;
+  for(;;)
+  {
+
+    uint32_t length = 0;
+    uint32_t status;
+
+    read_req.length = 1024; // 1k
+    read_req.offset[0] = offset;
+
+    write_message(ipid, &read_req, sizeof(read_req), NULL, 0);
+
+    // will return status_eof_error for eof...
+    h = read_response(ipid, SMB2_READ);
+
+    if (!h)
+    {
+      fprintf(stderr, "Error reading file\n");
+      break;
+    }
+
+    HLock(h);
+
+    responsePtr = *(smb_response **)h;
+
+    status = responsePtr->header.status;
+    if (status)
+    {
+      if (status == STATUS_END_OF_FILE)
+      {
+        DisposeHandle(h);
+        break;
+      }
+      fprintf(stderr, "Read error: %08lx\n", status);
+      DisposeHandle(h);
+      break;
+    }
+
+    length = responsePtr->body.read.data_length;
+    offset += length;
+
+
+    DisposeHandle(h);
+
+    if (offset >= eof) break;
+    // eof error?
+  }
 
 
   close_req.structure_size = 24;
