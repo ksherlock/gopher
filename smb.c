@@ -258,6 +258,7 @@ static void dump_create(const smb2_create_response *msg)
     msg->create_contexts_length);
 
   fprintf(stdout, "                buffer:\n");
+
   hexdump((const char *)msg - sizeof(smb2_header_sync) + 
     msg->create_contexts_offset, 
     msg->create_contexts_length);
@@ -265,6 +266,26 @@ static void dump_create(const smb2_create_response *msg)
   fprintf(stdout, "\n");
 }
 
+static void dump_read(const smb2_read_response *msg)
+{
+
+  fprintf(stdout, "        structure_size: %04x\n", msg->structure_size);
+  fprintf(stdout, "data_offset: %02x\n", msg->data_offset);
+  fprintf(stdout, "reserved: %02x\n", msg->reserved);
+  fprintf(stdout, "data_length: %08lx\n", msg->data_length);
+  fprintf(stdout, "data_remaining: %08lx\n", msg->data_remaining);
+  fprintf(stdout, "reserved2: %08lx\n", msg->reserved2);
+
+  fprintf(stdout, "                buffer:\n");
+
+  hexdump((const char *)msg + sizeof(smb2_read_response) + 
+    msg->data_offset, 
+    msg->data_length);
+
+  fprintf(stdout, "\n");
+
+
+}
 
 static void dump_response(const smb_response *msg)
 {
@@ -303,6 +324,10 @@ static void dump_response(const smb_response *msg)
 
     case SMB2_CLOSE:
       dump_close(&msg->body.close);
+      break;
+
+    case SMB2_READ:
+      dump_read(&msg->body.read);
       break;
 
     default:
