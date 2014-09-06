@@ -949,11 +949,12 @@ static int open_and_read(Word ipid, const uint16_t *path)
 
     uint32_t length = 0;
     uint32_t status;
+    static uint32_t NullByte = 0;
 
     read_req.length = 1024; // 1k
     read_req.offset[0] = offset;
 
-    write_message(ipid, &read_req, sizeof(read_req), NULL, 0);
+    write_message(ipid, &read_req, sizeof(read_req), &NullByte, 1);
 
     // will return status_eof_error for eof...
     h = read_response(ipid, SMB2_READ);
