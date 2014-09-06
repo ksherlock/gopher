@@ -890,8 +890,10 @@ static int open_and_read(Word ipid, const uint16_t *path)
   Handle h;
   smb_response *responsePtr;
   uint32_t file_id[4]; //!
+
   uint32_t eof;
   uint32_t offset;
+  uint32_t remainder;
 
   memset(&create_req, 0, sizeof(create_req));
   memset(&close_req, 0, sizeof(close_req));
@@ -944,14 +946,18 @@ static int open_and_read(Word ipid, const uint16_t *path)
   header.command = SMB2_READ;
 
   offset = 0;
+  remainder = eof;
   for(;;)
   {
-
     uint32_t length = 0;
     uint32_t status;
     static uint32_t NullByte = 0;
 
-    read_req.length = 1024; // 1k
+    //length = remainder;
+    //if (length > 1024) 
+    length = 1024;
+
+    read_req.length = length; // 1k
     read_req.offset[0] = offset;
 
     write_message(ipid, &read_req, sizeof(read_req), &NullByte, 1);
@@ -984,7 +990,7 @@ static int open_and_read(Word ipid, const uint16_t *path)
 
     length = responsePtr->body.read.data_length;
     offset += length;
-
+    remainder -= length;
 
     DisposeHandle(h);
 
