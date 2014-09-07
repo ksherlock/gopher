@@ -342,7 +342,10 @@ static void dump_response(const smb_response *msg)
 
 
 
-static void write_message(Word ipid, const void *data1, unsigned size1, const void *data2, unsigned size2)
+static void write_message(
+  Word ipid, 
+  const void *data1, unsigned size1, 
+  const void *data2, unsigned size2)
 {
   uint8_t nbthead[4];
   uint32_t size;
@@ -534,7 +537,9 @@ unsigned scan_asn1(const uint8_t *data, unsigned offset, unsigned length)
   static uint8_t kSPNEGO[] = {0x2B, 0x06, 0x01, 0x05, 0x05, 0x02}; 
 
   // '1.3.6.1.4.1.311.2.2.10'
-  static uint8_t kNTLMSSP[] = {0x2B, 0x06, 0x01, 0x04, 0x01, 0x82, 0x37, 0x02, 0x02, 0x0A}; 
+  static uint8_t kNTLMSSP[] = {
+    0x2B, 0x06, 0x01, 0x04, 0x01, 0x82, 0x37, 0x02, 0x02, 0x0A
+  }; 
 
   static uint8_t kType2[] = {
     'N', 'T', 'L', 'M', 'S', 'S', 'P', 0,
@@ -1017,6 +1022,63 @@ static int open_and_read(Word ipid, const uint16_t *path)
 }
 
 
+static uint16_t *host_tree(const char *url, const URLComponents *components)
+{
+  uint16_t *rv;
+
+  URLRange path;
+  URLRange host;
+
+  uint16_t length = 0;
+  unsigned i,l, index;
+
+  host = components->host;
+  path = components->path;
+
+  // adjust path to only include the first directory / share.
+
+  // skip leading /
+  path.location++;
+  path.length--;
+
+  for (i = path.location, l = path.length; l; ++i, --l)
+  {
+    unsigned c = url[i];
+    if (c == '/')
+    {
+      path.length -= l;
+      break;
+    }
+  }
+
+  length += host.length;
+  length += path.length;
+  length += 3;
+
+
+  rv = (uint16_t *)malloc(length * 2 + 4); // + 4 for length, term
+  if (!rv) return NULL;
+
+  rv[0] = length;
+  rv[length] = 0;
+  rv[1] = '\\';
+  rv[2] = '\\';
+
+  index = 3;
+  for (i = host.location, l = host.length; l ; ++i, --l)
+  {
+    rv[index++] = url[i];
+  }
+
+  rv[index++] = '\\';
+  for(i = path.location, l = path.length; l ; ++i, --l)
+  {
+    rv[index++] = url[i];
+  }
+
+  return rv;
+}
+
 int do_smb(char *url, URLComponents *components)
 {
   static Connection connection;
@@ -1030,6 +1092,10 @@ int do_smb(char *url, URLComponents *components)
   FILE *file;
 
   if (!components->portNumber) components->portNumber = 445;
+
+  // todo -- verify a share was included.
+  // todo -- verify a valid path after the share.
+
 
   host = URLComponentGetCMalloc(url, components, URLComponentHost);
 
@@ -1048,8 +1114,11 @@ int do_smb(char *url, URLComponents *components)
     return -1;
   }
 
+  // given server [:port] / share / path
+  // get the unicode server and share.
 
-  path = cstring_to_unicode("\\\\192.168.1.254\\public");
+  path = host_tree(url, components);
+  //path = cstring_to_unicode("\\\\192.168.1.254\\public");
   ok = negotiate(connection.ipid, path);
 
   free(path);
