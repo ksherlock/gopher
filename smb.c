@@ -959,6 +959,9 @@ static int open_and_read(Word ipid, const uint16_t *path)
 
   switch(status)
   {
+  case 0:
+    break;
+
   case STATUS_OBJECT_NAME_NOT_FOUND:
   case STATUS_NO_SUCH_FILE:
     fprintf(stderr, "File not found.\n");
