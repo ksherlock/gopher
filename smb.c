@@ -1177,6 +1177,9 @@ int do_smb(char *url, URLComponents *components)
   LongWord qtick;
 
   char *host;
+  char *user;
+  char *password;
+
   uint16_t *path;
   uint16_t *tmp;
 
@@ -1192,6 +1195,7 @@ int do_smb(char *url, URLComponents *components)
 
 
   host = URLComponentGetCMalloc(url, components, URLComponentHost);
+
 
   if (!host)
   {
@@ -1215,13 +1219,21 @@ int do_smb(char *url, URLComponents *components)
     return -1;
   }
 
-  // given server [:port] / share / path
   // get the unicode server and share.
+  user = URLComponentGetCMalloc(url, components, URLComponentUser);
+  password = URLComponentGetCMalloc(url, components, URLComponentPassword);
+
+
 
   tmp = host_tree(url, components);
+
+  // todo -- move tree connect to separate function.
   ok = negotiate(connection.ipid, tmp);
 
   free(tmp);
+  free(user);
+  free(password);
+
   tmp = NULL;
 
   if (ok == 0)
