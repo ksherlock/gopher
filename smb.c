@@ -899,6 +899,8 @@ static int open_and_read(Word ipid, const uint16_t *path)
   uint32_t eof;
   uint32_t offset;
   uint32_t remainder;
+  uint32_t status;
+
 
   memset(&create_req, 0, sizeof(create_req));
   memset(&close_req, 0, sizeof(close_req));
@@ -923,6 +925,18 @@ static int open_and_read(Word ipid, const uint16_t *path)
   if (!h) return -1;
 
   responsePtr = *(smb_response **)h;
+
+  status = responsePtr->header.status;
+  if (status == STATUS_OBJECT_NAME_NOT_FOUND)
+  {
+    fprintf(stderr, "File not found\n");
+    return -1;
+  }
+  if (status)
+  {
+    fprintf(stderr, "Open error: %08lx\n", status);
+  }
+
   file_id[0] = responsePtr->body.create.file_id[0];
   file_id[1] = responsePtr->body.create.file_id[1];
   file_id[2] = responsePtr->body.create.file_id[2];
@@ -955,7 +969,6 @@ static int open_and_read(Word ipid, const uint16_t *path)
   for(;;)
   {
     uint32_t length = 0;
-    uint32_t status;
     static uint32_t NullByte = 0;
 
     //length = remainder;
@@ -1079,6 +1092,49 @@ static uint16_t *host_tree(const char *url, const URLComponents *components)
   return rv;
 }
 
+static uint16_t *file_path(const char *url, const URLComponents *components)
+{
+  unsigned i, l;
+  URLRange path;
+  uint16_t *rv;
+
+  path = components->path;
+  // skip the first /
+  path.location += 1;
+  path.length -= 1;
+
+  // skip the share.
+
+  for (i = path.location, l = path.length; l; ++i, --l)
+  {
+    char c = url[i];
+    if (c == '/')
+    {
+      unsigned index;
+
+      path.location = i + 1;
+      path.length = l - 1;
+      if (!path.length) return NULL;
+
+      rv = malloc(path.length * 2 + 4);
+      if (!rv) return NULL;
+
+      rv[0] = path.length;
+      rv[path.length] = 0;
+
+      for (i = 0; i < path.length; ++i)
+      {
+        rv[i + 1] = url[path.location++];
+      }
+
+      return rv;
+    }
+
+  }
+
+  return NULL;
+}
+
 int do_smb(char *url, URLComponents *components)
 {
   static Connection connection;
@@ -1086,6 +1142,8 @@ int do_smb(char *url, URLComponents *components)
 
   char *host;
   uint16_t *path;
+  uint16_t *tmp;
+
   Word err;
   Word terr;
   Word ok;
@@ -1105,6 +1163,13 @@ int do_smb(char *url, URLComponents *components)
     return -1;
   }  
 
+  path = file_path(url, components);
+  if (!path)
+  {
+    fprintf(stderr, "Invalid SMB path.  use smb://host/share/path...\n");
+    return -1;
+  }
+
   ok = ConnectLoop(host, components->portNumber, &connection);
   
   if (!ok)
@@ -1117,19 +1182,19 @@ int do_smb(char *url, URLComponents *components)
   // given server [:port] / share / path
   // get the unicode server and share.
 
-  path = host_tree(url, components);
-  //path = cstring_to_unicode("\\\\192.168.1.254\\public");
-  ok = negotiate(connection.ipid, path);
+  tmp = host_tree(url, components);
+  ok = negotiate(connection.ipid, tmp);
 
-  free(path);
-  path = NULL;
+  free(tmp);
+  tmp = NULL;
 
   if (ok == 0)
   {
-    path = cstring_to_unicode("hello.text");
     ok = open_and_read(connection.ipid, path);
   }
 
+  free(path);
+  path = NULL;
 
   ok = disconnect(connection.ipid);
 
