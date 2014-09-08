@@ -927,14 +927,21 @@ static int open_and_read(Word ipid, const uint16_t *path)
   responsePtr = *(smb_response **)h;
 
   status = responsePtr->header.status;
-  if (status == STATUS_OBJECT_NAME_NOT_FOUND)
+
+  switch(status)
   {
+  case STATUS_OBJECT_NAME_NOT_FOUND:
+  case STATUS_NO_SUCH_FILE:
     fprintf(stderr, "File not found\n");
     return -1;
-  }
-  if (status)
-  {
+
+  case STATUS_FILE_IS_A_DIRECTORY:
+    fprintf(stderr, "File is a directory\n");
+    return -1;
+
+  default:
     fprintf(stderr, "Open error: %08lx\n", status);
+    return -1;
   }
 
   file_id[0] = responsePtr->body.create.file_id[0];
