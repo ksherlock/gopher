@@ -961,11 +961,15 @@ static int open_and_read(Word ipid, const uint16_t *path)
   {
   case STATUS_OBJECT_NAME_NOT_FOUND:
   case STATUS_NO_SUCH_FILE:
-    fprintf(stderr, "File not found\n");
+    fprintf(stderr, "File not found.\n");
     return -1;
 
   case STATUS_FILE_IS_A_DIRECTORY:
-    fprintf(stderr, "File is a directory\n");
+    fprintf(stderr, "File is a directory.\n");
+    return -1;
+
+  case STATUS_OBJECT_PATH_NOT_FOUND:
+    fprintf(stderr, "Path not found.\n");
     return -1;
 
   default:
