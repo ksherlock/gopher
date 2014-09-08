@@ -77,13 +77,42 @@ static int is_error(const smb_response *msg)
   return true;
 }
 
+static char *smb_command_name(unsigned command)
+{
+  switch (command)
+  {
+  case SMB2_NEGOTIATE: return "SMB2_NEGOTIATE";
+  case SMB2_SESSION_SETUP: return "SMB2_SESSION_SETUP";
+  case SMB2_LOGOFF: return "SMB2_LOGOFF";
+  case SMB2_TREE_CONNECT: return "SMB2_TREE_CONNECT";
+  case SMB2_TREE_DISCONNECT: return "SMB2_TREE_DISCONNECT";
+  case SMB2_CREATE: return "SMB2_CREATE";
+  case SMB2_CLOSE: return "SMB2_CLOSE";
+  case SMB2_FLUSH: return "SMB2_FLUSH";
+  case SMB2_READ: return "SMB2_READ";
+  case SMB2_WRITE: return "SMB2_WRITE";
+  case SMB2_LOCK: return "SMB2_LOCK";
+  case SMB2_IOCTL: return "SMB2_IOCTL";
+  case SMB2_CANCEL: return "SMB2_CANCEL";
+  case SMB2_ECHO: return "SMB2_ECHO";
+  case SMB2_QUERY_DIRECTORY: return "SMB2_QUERY_DIRECTORY";
+  case SMB2_CHANGE_NOTIFY: return "SMB2_CHANGE_NOTIFY";
+  case SMB2_QUERY_INFO: return "SMB2_QUERY_INFO";
+  case SMB2_SET_INFO: return "SMB2_SET_INFO";
+  case SMB2_OPLOCK_BREAK: return "SMB2_OPLOCK_BREAK";
+    default: return "";
+  }
+}
+
 static void dump_header(const smb2_header_sync *header)
 {
+
   fprintf(stdout, "           protocol_id: %08lx\n", header->protocol_id);
   fprintf(stdout, "        structure_size: %04x\n", header->structure_size);
   fprintf(stdout, "         credit_charge: %04x\n", header->credit_charge);
   fprintf(stdout, "                status: %08lx\n", header->status);
-  fprintf(stdout, "               command: %04x\n", header->command);
+  fprintf(stdout, "               command: %04x %s\n", 
+    header->command, smb_command_name(header->command));
   fprintf(stdout, "                credit: %04x\n", header->credit);
   fprintf(stdout, "                 flags: %08lx\n", header->flags);
   fprintf(stdout, "          next_command: %08lx\n", header->next_command);
