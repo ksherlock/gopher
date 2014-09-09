@@ -929,7 +929,7 @@ static int disconnect(Word ipid)
 }
 
 
-static int open_and_read(Word ipid, const uint16_t *path)
+static int open_and_read(Word ipid, const uint16_t *path, FILE *fp)
 {
   static smb2_create_request create_req;
   static smb2_close_request close_req;
@@ -1064,6 +1064,12 @@ static int open_and_read(Word ipid, const uint16_t *path)
     }
 
     length = responsePtr->body.read.data_length;
+
+
+    fwrite((const char *)&responsePtr->body.read + sizeof(smb2_read_response), 
+      1, length, fp);
+
+
     offset += length;
     remainder -= length;
 
@@ -1200,13 +1206,14 @@ int do_smb(char *url, URLComponents *components)
   char *host;
   char *user;
   char *password;
+  FILE *fp;
 
   uint16_t *path;
 
   Word err;
   Word terr;
   Word ok;
-  FILE *file;
+  FILE *file = stdout;
 
   if (!components->portNumber) components->portNumber = 445;
 
@@ -1258,7 +1265,7 @@ int do_smb(char *url, URLComponents *components)
 
   if (ok == 0)
   {
-    ok = open_and_read(connection.ipid, path);
+    ok = open_and_read(connection.ipid, path, file);
   }
 
   free(path);
@@ -1268,6 +1275,8 @@ int do_smb(char *url, URLComponents *components)
 
 
   CloseLoop(&connection);
+
+  if (file != stdout) fclose(file);
 
   return 0;
 }
