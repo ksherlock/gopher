@@ -654,11 +654,10 @@ restart:
 
 
 // see wireshark / epan / dissectors / packet-ntlmssp.c
-static int negotiate(Word ipid, uint16_t *path)
+static int negotiate(Word ipid, const char *user, const char *password)
 {
   static struct smb2_negotiate_request negotiate_req;
   static struct smb2_session_setup_request setup_req;
-  static struct smb2_tree_connect_request tree_req;
 
 
   static uint16_t dialects[] = { 0x0202 };
@@ -719,7 +718,6 @@ static int negotiate(Word ipid, uint16_t *path)
   memset(&header, 0, sizeof(header));
   memset(&negotiate_req, 0, sizeof(negotiate_req));
   memset(&setup_req, 0, sizeof(setup_req));
-  memset(&tree_req, 0, sizeof(tree_req));
 
   header.protocol_id = SMB2_MAGIC; // '\xfeSMB';
   header.structure_size = 64;
@@ -849,6 +847,21 @@ static int negotiate(Word ipid, uint16_t *path)
     }
   }
 
+  return 0;
+
+
+}
+
+static int connect(Word ipid, uint16_t *path)
+{
+
+  static struct smb2_tree_connect_request tree_req;
+
+  Handle h;
+  smb_response *responsePtr;
+
+
+  memset(&tree_req, 0, sizeof(tree_req));
 
 
   header.command = SMB2_TREE_CONNECT;
@@ -873,6 +886,7 @@ static int negotiate(Word ipid, uint16_t *path)
 
 
   return 0;
+
 }
 
 
@@ -1188,7 +1202,6 @@ int do_smb(char *url, URLComponents *components)
   char *password;
 
   uint16_t *path;
-  uint16_t *tmp;
 
   Word err;
   Word terr;
@@ -1218,10 +1231,10 @@ int do_smb(char *url, URLComponents *components)
   }
 
   ok = ConnectLoop(host, components->portNumber, &connection);
+  free(host);
   
   if (!ok)
   {
-    free(host);
     if (file != stdout) fclose(file);
     return -1;
   }
@@ -1231,17 +1244,17 @@ int do_smb(char *url, URLComponents *components)
   password = URLComponentGetCMalloc(url, components, URLComponentPassword);
 
 
-
-  tmp = host_tree(url, components);
-
-  // todo -- move tree connect to separate function.
-  ok = negotiate(connection.ipid, tmp);
-
-  free(tmp);
+  ok = negotiate(connection.ipid, user, password);
   free(user);
   free(password);
 
-  tmp = NULL;
+  if (ok == 0)
+  {
+    uint16_t *tmp;
+    tmp = host_tree(url, components);
+    ok = connect(connection.ipid, tmp);
+    free(tmp);
+  }
 
   if (ok == 0)
   {
@@ -1256,6 +1269,5 @@ int do_smb(char *url, URLComponents *components)
 
   CloseLoop(&connection);
 
-  free(host);
   return 0;
 }
