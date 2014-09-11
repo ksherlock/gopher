@@ -472,7 +472,9 @@ static Handle read_response(Word ipid, uint32_t command)
     HLock(h);
 
     responsePtr = *(smb_response **)h;
-    dump_response(responsePtr);
+
+    if (flags._v >= 2)
+      dump_response(responsePtr);
 
     if (
       responsePtr->header.protocol_id != SMB2_MAGIC || 
@@ -756,11 +758,13 @@ static int negotiate(Word ipid, const char *user, const char *password)
     scan_asn1((const char *)responsePtr + responsePtr->body.negotiate.security_buffer_offset,
       0, tmp);
 
+    #if 0
     if (flags._v)
     {
       fprintf(stdout, "has_spnego: %d\n", has_spnego);
       fprintf(stdout, "has_mech_ntlmssp: %d\n", has_mech_ntlmssp);
     }
+    #endif
 
   }
 
@@ -806,6 +810,7 @@ static int negotiate(Word ipid, const char *user, const char *password)
     scan_asn1((const char *)responsePtr + responsePtr->body.setup.security_buffer_offset,
       0, tmp);
 
+    #if 0
     if (flags._v)
     {
       fprintf(stdout, "has_spnego: %d\n", has_spnego);
@@ -814,7 +819,8 @@ static int negotiate(Word ipid, const char *user, const char *password)
       fprintf(stdout, "ntlmssp_challenge: %08lx%08lx\n", 
         ntlmssp_challenge[1], ntlmssp_challenge[0]);
     }
-
+    #endif
+    
   }
 
   tmp = 0;
