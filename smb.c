@@ -1285,6 +1285,7 @@ int do_smb(char *url, URLComponents *components)
 
   CloseLoop(&connection);
 
+  fflush(file);
   if (file != stdout) fclose(file);
 
   return 0;
