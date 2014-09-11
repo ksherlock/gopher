@@ -1,24 +1,26 @@
+
 #ifndef __flags_h__
 #define __flags_h__
 
 typedef struct Flags {
-
-    int _0:1;   // -1 (use http 1.0)
-    int _9:1;   // -9 (use http 0.9)
-    int _i:1;   // -i (include http headers)
-    int _I:1;   // -I (http HEAD command)
-    int _O:1;   // -O (file name from url)
-    int _v:1;   // -v (verbose)
-    int _V:1;
-
     char *_o;
+    unsigned _v;
+
+    unsigned _i:1;
+    unsigned _I:1;
+    unsigned _V:1;
+    unsigned _O:1;
+    unsigned _0:1;
+    unsigned _1:1;
+
 } Flags;
 
 
 extern struct Flags flags;
 
-int ParseFlags(int argc, char **argv);
+int FlagsParse(int argc, char **argv);
 
-void help(void);
+void FlagsHelp(void);
 
 #endif
+

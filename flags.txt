@@ -4,7 +4,8 @@ options:
   - o: { argument : true, xor: 'O' }
   - i
   - I
-  - v
+  - V
+  - v: { increment: true }
   - O
   - 0: { xor: '1'}
   - 1: { xor: '0' }
@@ -13,6 +14,7 @@ help:
   - gopher [options] url
   - -h         display help information
   - -V         display version information
+  - -v         be verbose
   - -i         display http headers
   - -I         http HEAD
   - -O         write output to file

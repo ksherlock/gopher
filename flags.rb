@@ -75,6 +75,7 @@ class Option
 
 		@char = hash['char'].to_s
 		@argument = hash['argument'] || false
+		@increment = hash['increment'] || false
 
 		@flag_name = hash['flag_name']
 		@flag_name = @flag_name.to_s if @flag_name
@@ -92,10 +93,10 @@ class Option
 		@xor.map! { |x| x.to_s }
 	end
 
-	attr_reader :char, :xor, :argument
+	attr_reader :char, :xor, :argument, :increment
 
 	def flag_name
-		return @flag_name if @flagname
+		return @flag_name if @flag_name
 		return self.class.flag_name(@char)
 	end
 
@@ -173,7 +174,7 @@ argf_each {|filename, file|
 	# check for help?
 
 	basename = filename
-	basename = $1 if filename && filename =~ /^(.*)./
+	basename = $1 if filename && filename =~ /^(.*)\./
 
 	b = binding # bind help, options for ERB.
 
@@ -189,11 +190,13 @@ argf_each {|filename, file|
 	options.each {|opt|
 		if opt.argument
 			io.printf("    char *%s;\n", opt.flag_name)
+		elsif opt.increment
+			io.printf("    unsigned %s;\n", opt.flag_name)
 		end
 	}
 	io.puts()
 	options.each {|opt|
-		if !opt.argument
+		if !opt.argument && !opt.increment
 			io.printf("    unsigned %s:1;\n", opt.flag_name)
 		end
 	}
@@ -207,7 +210,6 @@ argf_each {|filename, file|
 #	puts code.result(binding())
 
 }
-
 
 __END__
 
@@ -289,6 +291,8 @@ int FlagsParse(int argc, char **argv)
           }
           <%= flag_name %> = argv[i];
         }
+% elsif opt.increment
+        <%= flag_name %>++;
 % else # no argument.
         <%= flag_name %> = 1;
 % end # if no argument.
