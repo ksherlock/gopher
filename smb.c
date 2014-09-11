@@ -1175,9 +1175,16 @@ static uint16_t *file_path(const char *url, const URLComponents *components)
     {
       unsigned index;
 
+#if 0
       path.location = i + 1;
       path.length = l - 1;
       if (!path.length) return NULL;
+#else
+      // include leading /
+      path.location = i;
+      path.length = l;
+      if (path.length <= 1) return NULL;
+#endif
 
       rv = malloc(path.length * 2 + 4);
       if (!rv) return NULL;
