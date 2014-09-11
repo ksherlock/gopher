@@ -1187,7 +1187,9 @@ static uint16_t *file_path(const char *url, const URLComponents *components)
 
       for (i = 0; i < path.length; ++i)
       {
-        rv[i + 1] = url[path.location++];
+        uint16_t c = url[path.location++];
+        if (c == '/') c = '\\';
+        rv[i + 1] = c;
       }
 
       return rv;
