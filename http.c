@@ -406,6 +406,23 @@ int read_response(Word ipid, FILE *file, Handle dict)
 
     }
 
+    if (FileAttr & ATTR_FILETYPE)
+    {
+      switch (FileInfo.fileType)
+      {
+        case 0x04:
+        case 0xb0:
+          // text
+          fsettext(file);
+          break;
+        default:
+          fsetbinary(file);
+          break;
+      }
+
+    }
+
+
     /*
      * convert the Last Modified header into a file mod date
      *
@@ -644,8 +661,6 @@ int do_http(const char *url, URLComponents *components)
     {    
         // path starts with /.
 
-        // todo -- also need to strip any ? parameters.
-        
         filename = strrchr(path + 1, '/');
         if (filename) // *filename == '/'
         {
@@ -660,7 +675,6 @@ int do_http(const char *url, URLComponents *components)
     if (!filename || !filename[0])
     {
         // path/ ?
-        fprintf(stderr, "-O flag cannot be used with this URL.\n");
         free(host);
         free(path);        
         return -1;            
