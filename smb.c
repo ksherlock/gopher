@@ -25,6 +25,11 @@
 #include "smb.errors.h"
 #include "asn1.h"
 
+
+static FileInfoRecGS FileInfo;
+static Word FileAttr;
+
+
 static struct smb2_header_sync header;
 
 
@@ -1221,7 +1226,6 @@ int do_smb(char *url, URLComponents *components)
   char *host;
   char *user;
   char *password;
-  FILE *fp;
 
   uint16_t *path;
 
@@ -1229,6 +1233,9 @@ int do_smb(char *url, URLComponents *components)
   Word terr;
   Word ok;
   FILE *file = stdout;
+  char *filename = NULL;
+
+  FileAttr = 0;
 
   if (!components->portNumber) components->portNumber = 445;
 
@@ -1251,6 +1258,81 @@ int do_smb(char *url, URLComponents *components)
     fprintf(stderr, "Invalid SMB path.  use smb://host/share/path...\n");
     return -1;
   }
+
+  if (flags._o)
+  {
+     filename = flags._o;
+     if (filename && !filename[0])
+       filename = NULL;
+     if (filename && filename[0] == '-' && !filename[1])
+       filename = NULL;
+  }
+
+  if (flags._O)
+  {
+    // cpath is never freed.  oh well.
+    char *cpath = NULL;
+
+    cpath = URLComponentGetCMalloc(url, components, URLComponentPath);
+    if (cpath)
+    {    
+        // path starts with /.
+
+        filename = strrchr(cpath + 1, '/');
+        if (filename) // *filename == '/'
+        {
+            filename++;
+        }
+        else
+        {
+            filename = cpath + 1; // ? should have caught it above...
+        }    
+    }
+
+
+    if (!filename || !filename[0])
+    {
+      fprintf(stderr, "-O flag cannot be used with this URL.\n");
+      free(path);
+      free(cpath);
+      return -1;
+    }
+  }
+
+  if (filename)
+  {
+      file = fopen(filename, "w");
+      if (!file)
+      {
+        fprintf(stderr, "Unable to to open file ``%s'': %s\n",
+          filename, strerror(errno));
+          
+        free(path);
+        return -1; 
+      }
+
+      // hmm, flag for this vs content type?
+      if (parse_extension_c(filename, &FileInfo.fileType, &FileInfo.auxType))
+      {
+        FileAttr |= ATTR_FILETYPE | ATTR_AUXTYPE;
+      }
+
+      if (FileAttr & ATTR_FILETYPE)
+      {
+        switch (FileInfo.fileType)
+        {
+          case 0x04:
+          case 0xb0:
+            fsettext(file);
+            break;
+          default:
+            fsetbinary(file);
+            break;
+        }
+
+      }
+  }
+
 
   ok = ConnectLoop(host, components->portNumber, &connection);
   free(host);
@@ -1293,6 +1375,9 @@ int do_smb(char *url, URLComponents *components)
 
   fflush(file);
   if (file != stdout) fclose(file);
+
+  if (filename) setfileattr(filename, &FileInfo, FileAttr);
+
 
   return 0;
 }
